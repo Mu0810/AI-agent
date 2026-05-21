@@ -31,14 +31,24 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 IS_PRODUCTION = os.getenv("PRODUCTION", "false").lower() == "true"
 
 if IS_PRODUCTION and FRONTEND_URL != "*":
-    origins = [FRONTEND_URL, f"https://{FRONTEND_URL}", f"http://{FRONTEND_URL}"]
+    # Split by comma in case multiple URLs are provided
+    raw_origins = [o.strip() for o in FRONTEND_URL.split(",") if o.strip()]
+    origins = []
+    for origin in raw_origins:
+        origins.append(origin)
+        if not origin.startswith("http://") and not origin.startswith("https://"):
+            origins.append(f"https://{origin}")
+            origins.append(f"http://{origin}")
 else:
     origins = ["*"]
+
+# Browser security rules: allow_credentials cannot be True when allow_origins is ["*"]
+allow_credentials = False if "*" in origins else True
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
