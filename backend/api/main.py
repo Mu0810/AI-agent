@@ -31,8 +31,8 @@ FRONTEND_URL = os.getenv("FRONTEND_URL", "*")
 IS_PRODUCTION = os.getenv("PRODUCTION", "false").lower() == "true"
 
 if IS_PRODUCTION and FRONTEND_URL != "*":
-    # Split by comma in case multiple URLs are provided
-    raw_origins = [o.strip() for o in FRONTEND_URL.split(",") if o.strip()]
+    # Split by comma in case multiple URLs are provided, and strip trailing slashes
+    raw_origins = [o.strip().rstrip("/") for o in FRONTEND_URL.split(",") if o.strip().rstrip("/")]
     origins = []
     for origin in raw_origins:
         origins.append(origin)
