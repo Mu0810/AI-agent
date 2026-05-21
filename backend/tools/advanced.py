@@ -5,13 +5,53 @@ from datetime import datetime
 AI_PROVIDER = os.getenv("AI_PROVIDER", "ollama")
 
 def analyze_image(image_path: str, prompt: str = "Describe this image in detail.") -> str:
-    """Analyze an image. Uses Ollama locally, gracefully degrades in cloud."""
+    """Analyze an image. Uses Ollama locally, and Groq Vision in cloud."""
     try:
         if not os.path.exists(image_path):
             return f"Error: File not found: {image_path}"
 
         if AI_PROVIDER == "groq":
-            return "Image analysis is currently available only in local mode. Please describe your image in text and I'll help you with it."
+            from groq import Groq
+            import base64
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                return "Error: GROQ_API_KEY environment variable is not set."
+            client = Groq(api_key=api_key)
+            
+            # Determine image MIME type based on extension
+            ext = os.path.splitext(image_path)[1].lower().replace(".", "")
+            if ext not in ["png", "jpg", "jpeg", "webp", "gif"]:
+                ext = "jpeg"
+            if ext == "jpg":
+                ext = "jpeg"
+            mime_type = f"image/{ext}"
+            
+            with open(image_path, "rb") as f:
+                image_bytes = f.read()
+            base64_image = base64.b64encode(image_bytes).decode('utf-8')
+            
+            response = client.chat.completions.create(
+                model="llama-3.2-11b-vision-preview",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": prompt
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{base64_image}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=1024
+            )
+            return response.choices[0].message.content
 
         import ollama
         import base64
