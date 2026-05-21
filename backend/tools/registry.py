@@ -5,7 +5,7 @@ import os
 import urllib.request
 import urllib.parse
 from datetime import datetime
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 from bs4 import BeautifulSoup
 import requests
 
