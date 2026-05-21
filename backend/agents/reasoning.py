@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import time
 from datetime import datetime
 from backend.db import NexusDB
 from backend.tools.registry import TOOLS, TOOL_FUNCTIONS, get_active_tools
@@ -198,21 +199,20 @@ CAPABILITIES:
 - Document analysis (PDF, images)
 
 PERSONALITY:
-- Professional yet approachable
-- Thorough but concise — avoid unnecessary verbosity
-- Proactive — suggest follow-up actions when relevant
-- Honest about limitations and uncertainties
+- Professional, technical, yet approachable and user-friendly
+- Highly analytical — prefers systematic, step-by-step reasoning (Chain-of-Thought)
+- Thorough but concise — avoid boilerplate conversational filler
+- Honest about limitations, uncertainties, and tool failures
 
 RULES:
-- Use provided search results for accurate, up-to-date answers
-- Always cite sources with URLs when using search results
-- When writing code, ALWAYS include print statements and call your functions so output is visible
-- Never fabricate information — say "I don't know" if uncertain
-- Use rich markdown formatting: headers, lists, bold, code blocks, tables
-- For code, always specify the language in code blocks
-- When comparing options, use tables for clarity
-- Break complex answers into clear sections with headers
-- If a question is ambiguous, ask for clarification before answering"""
+- Systematically analyze problems before outputting code or mathematical steps.
+- Use provided search results for accurate, up-to-date answers. Always cite sources with URLs when using search results.
+- When writing code, ALWAYS include print statements and call your functions so output is visible.
+- Use rich markdown formatting: clear headers, bullet points, bold key terms, tables, and standard-compliant code blocks.
+- For code snippets, always specify the correct language (e.g. `python`, `javascript`, `bash`) for syntax highlighting.
+- When comparing options, use markdown tables for clarity.
+- Break complex answers into logical, readable sections using H2 (`##`) and H3 (`###`) headers.
+- If a question or tool request is ambiguous, state your assumptions clearly or ask for clarification."""
 
 class ReasoningAgent:
     def __init__(self, user_id="default", conversation_id="default"):
@@ -298,54 +298,57 @@ class ReasoningAgent:
         full_content = ""
         try:
             active_tools = get_active_tools()
-
-            # First: check if tools are needed (non-streaming call)
-            if active_tools:
-                try:
-                    tool_response = chat_completion(self.messages, tools=active_tools, stream=False)
-                    tool_calls, raw_msg = extract_tool_calls(tool_response)
-                    
-                    if tool_calls:
-                        # Process tool calls
-                        self.messages.append(build_assistant_tool_message(raw_msg))
-                        for tc in tool_calls:
-                            fn = tc["name"]
-                            args = tc["arguments"]
-                            yield {"type": "step", "step": {"type": "thinking", "content": f"Using {fn}..."}}
-                            result = TOOL_FUNCTIONS.get(fn, lambda **k: "Unknown tool")(**args)
-                            yield {"type": "step", "step": {"type": "tool", "tool": fn, "args": args, "result": str(result)[:500]}}
-                            self.messages.append(build_tool_response_message(tc["id"], result))
-                except Exception:
-                    pass  # Fall through to streaming response
             
-            # Stream the final response
-            if AI_PROVIDER == "groq":
-                stream = chat_completion(self.messages, stream=True)
-                for chunk in stream:
-                    delta = chunk.choices[0].delta
-                    token = delta.content if delta and delta.content else ""
-                    if token:
-                        full_content += token
-                        yield {"type": "token", "content": token}
+            def simulate_stream(text):
+                chunk_size = 8
+                for idx in range(0, len(text), chunk_size):
+                    chunk = text[idx:idx+chunk_size]
+                    yield {"type": "token", "content": chunk}
+                    time.sleep(0.01)
+
+            step = 0
+            while step < max_steps:
+                if active_tools:
+                    response = chat_completion(self.messages, tools=active_tools)
+                else:
+                    response = chat_completion(self.messages)
+                
+                tool_calls, raw_msg = extract_tool_calls(response)
+                
+                if tool_calls:
+                    self.messages.append(build_assistant_tool_message(raw_msg))
+                    for tc in tool_calls:
+                        fn = tc["name"]
+                        args = tc["arguments"]
+                        yield {"type": "step", "step": {"type": "thinking", "content": f"Using {fn}..."}}
+                        try:
+                            result = TOOL_FUNCTIONS.get(fn, lambda **k: "Unknown tool")(**args)
+                        except Exception as e:
+                            result = f"Tool error: {str(e)}"
+                        yield {"type": "step", "step": {"type": "tool", "tool": fn, "args": args, "result": str(result)[:500]}}
+                        self.messages.append(build_tool_response_message(tc["id"], result))
+                    step += 1
+                else:
+                    full_content = extract_content(response)
+                    if not full_content or len(full_content.strip()) == 0:
+                        if step < max_steps - 1:
+                            self.messages.append({"role": "user", "content": "Please provide a response to the previous question."})
+                            step += 1
+                            continue
+                        full_content = "I wasn't able to generate a response. Please try rephrasing your question."
+                    
+                    # Stream the text
+                    for event in simulate_stream(full_content):
+                        yield event
+                    break
             else:
-                stream = chat_completion(self.messages, stream=True)
-                for chunk in stream:
-                    token = chunk.get("message", {}).get("content", "")
-                    if token:
-                        full_content += token
-                        yield {"type": "token", "content": token}
+                full_content = "Reached thinking limit. Please try a simpler question."
+                for event in simulate_stream(full_content):
+                    yield event
 
         except Exception as e:
-            # Fallback to non-streaming
-            try:
-                response = chat_completion(self.messages)
-                full_content = extract_content(response)
-                if not full_content:
-                    full_content = "I couldn't process that request."
-                yield {"type": "token", "content": full_content}
-            except Exception as e2:
-                full_content = f"Error: {str(e2)}"
-                yield {"type": "token", "content": full_content}
+            full_content = f"Error: {str(e)}"
+            yield {"type": "token", "content": full_content}
         
         if full_content:
             db.add_message(self.conversation_id, "assistant", full_content)
