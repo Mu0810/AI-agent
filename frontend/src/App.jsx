@@ -150,9 +150,9 @@ function CodeBlock({ language, code }) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative group my-4 rounded-xl overflow-hidden border border-white/10 hover-lift"
+      className="relative group my-4 rounded-xl overflow-hidden border border-white/10"
     >
-      <div className="flex items-center justify-between px-4 py-2 bg-dark-800/80 border-b border-white/5">
+      <div className="flex items-center justify-between px-4 py-2 bg-dark-900/95 border-b border-white/5">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
             <motion.div className="w-2.5 h-2.5 rounded-full bg-red-500/60" whileHover={{ scale: 1.3 }} />
@@ -161,11 +161,11 @@ function CodeBlock({ language, code }) {
           </div>
           <span className="text-xs text-dark-400 font-mono ml-2">{language || 'text'}</span>
         </div>
-        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={handleCopy} className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-white/10 text-xs text-dark-400 hover:text-white transition-colors btn-ripple">
+        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleCopy} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md hover:bg-white/10 text-xs text-dark-400 hover:text-white transition-colors btn-ripple">
           {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />} {copied ? 'Copied!' : 'Copy'}
         </motion.button>
       </div>
-      <SyntaxHighlighter language={language || 'text'} style={oneDark} customStyle={{ margin: 0, padding: '1rem', background: 'rgba(15, 23, 42, 0.5)', fontSize: '0.85rem', lineHeight: '1.6' }} wrapLongLines>{code}</SyntaxHighlighter>
+      <SyntaxHighlighter language={language || 'text'} style={oneDark} customStyle={{ margin: 0, padding: '1rem', background: 'rgba(11, 17, 30, 0.7)', fontSize: '0.85rem', lineHeight: '1.6' }} wrapLongLines>{code}</SyntaxHighlighter>
     </motion.div>
   )
 }
@@ -176,7 +176,7 @@ function TypingIndicator() {
       <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mt-1 glow-primary">
         <Bot className="w-4 h-4 text-white" />
       </div>
-      <div className="glass rounded-2xl px-5 py-4 flex items-center gap-3">
+      <div className="assistant-chat-bubble assistant-accent-bar flex items-center gap-3 py-4">
         {[0, 1, 2].map(i => (
           <motion.div
             key={i}
@@ -221,25 +221,43 @@ function VoiceChat({ onResult, onClose }) {
   const toggle = () => { if (!recognition) return; if (isListening) { recognition.stop() } else { setTranscript(''); transcriptRef.current = ''; recognition.start(); setIsListening(true) } }
   const speak = (text) => { if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text || 'Hello! I am NEXUS.'); speechSynthesis.speak(u) } }
   return (
-    <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.95 }} className="glass rounded-2xl p-4 mb-4 border border-white/10">
-      <div className="flex items-center justify-between mb-4">
+    <motion.div initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 20, scale: 0.95 }} className="glass-premium rounded-2xl p-5 mb-4 border border-white/5 shadow-2xl relative overflow-hidden">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
         <div className="flex items-center gap-3">
           <motion.div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ${isListening ? 'bg-red-500/20' : 'bg-primary-500/20'}`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center ${isListening ? 'bg-red-500/20 border border-red-500/30' : 'bg-primary-500/10 border border-primary-500/20'}`}
             animate={isListening ? { scale: [1, 1.15, 1], boxShadow: ['0 0 0px rgba(239,68,68,0)', '0 0 20px rgba(239,68,68,0.4)', '0 0 0px rgba(239,68,68,0)'] } : {}}
             transition={{ duration: 1, repeat: Infinity }}
           >
             {isListening ? <Mic className="w-5 h-5 text-red-400" /> : <MicOff className="w-5 h-5 text-dark-400" />}
           </motion.div>
-          <div><p className="text-sm font-medium text-white">Voice Chat</p><p className="text-xs text-dark-400">{isListening ? 'Listening...' : 'Tap to speak'}</p></div>
+          <div><p className="text-sm font-semibold text-white">Voice Chat</p><p className="text-xs text-dark-400">{isListening ? 'Listening...' : 'Tap to speak'}</p></div>
         </div>
-        <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><X className="w-4 h-4 text-dark-400" /></button>
+        <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 hover:text-white text-dark-400 transition-colors"><X className="w-5 h-5" /></button>
       </div>
       <div className="flex items-center gap-4">
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={toggle} className={`flex-1 py-3 rounded-xl font-medium text-sm btn-ripple ${isListening ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-primary-500/20 text-primary-400 border border-primary-500/30'}`}>{isListening ? 'Stop' : 'Start Listening'}</motion.button>
-        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={() => speak(transcript)} className="p-3 rounded-xl bg-accent-500/20 text-accent-400 border border-accent-500/30 btn-ripple"><Volume2 className="w-5 h-5" /></motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.02 }} 
+          whileTap={{ scale: 0.98 }} 
+          onClick={toggle} 
+          className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all border btn-ripple ${
+            isListening 
+              ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20' 
+              : 'bg-primary-500/10 text-primary-400 border-primary-500/20 hover:bg-primary-500/20'
+          }`}
+        >
+          {isListening ? 'Stop' : 'Start Listening'}
+        </motion.button>
+        <motion.button 
+          whileHover={{ scale: 1.05 }} 
+          whileTap={{ scale: 0.95 }} 
+          onClick={() => speak(transcript)} 
+          className="p-3 rounded-xl bg-accent-500/10 text-accent-400 border border-accent-500/20 hover:bg-accent-500/20 transition-all btn-ripple"
+        >
+          <Volume2 className="w-5 h-5" />
+        </motion.button>
       </div>
-      {transcript && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 p-3 rounded-lg bg-dark-900/50 text-sm text-dark-200">"{transcript}"</motion.div>}
+      {transcript && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 p-3.5 rounded-xl bg-white/5 border border-white/5 text-sm text-dark-200 leading-relaxed font-medium">"{transcript}"</motion.div>}
       {isListening && <div className="flex items-center justify-center gap-1 mt-4">{[...Array(7)].map((_, i) => (<motion.div key={i} className="w-1 rounded-full bg-gradient-to-t from-primary-400 to-accent-400" animate={{ height: [8, 28, 8], opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.6, repeat: Infinity, delay: i * 0.08, ease: 'easeInOut' }} />))}</div>}
     </motion.div>
   )
@@ -248,24 +266,51 @@ function VoiceChat({ onResult, onClose }) {
 function Dashboard({ analytics, onClose }) {
   const { usage, events } = analytics || {}
   return (
-    <motion.div initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }} className="glass rounded-2xl p-6 mb-4 border border-white/10">
-      <div className="flex items-center justify-between mb-6"><h2 className="text-xl font-bold text-gradient neon-text">Dashboard</h2><button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><X className="w-5 h-5 text-dark-400" /></button></div>
+    <motion.div initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }} className="glass-premium rounded-2xl p-6 mb-4 border border-white/5 shadow-2xl relative overflow-hidden">
+      <div className="flex items-center justify-between mb-6 pb-2 border-b border-white/5">
+        <h2 className="text-xl font-bold text-gradient neon-text">Dashboard</h2>
+        <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 hover:text-white text-dark-400 transition-colors"><X className="w-5 h-5" /></button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[{ icon: MessageSquare, label: 'Conversations', value: usage?.total_conversations || 0, color: 'from-blue-500 to-cyan-500' }, { icon: Brain, label: 'Messages', value: usage?.total_messages || 0, color: 'from-purple-500 to-pink-500' }, { icon: Zap, label: 'Tokens Used', value: usage?.total_tokens || 0, color: 'from-yellow-500 to-orange-500' }, { icon: BookOpen, label: 'Knowledge', value: usage?.knowledge_entries || 0, color: 'from-green-500 to-emerald-500' }].map((s, i) => (
-          <motion.div key={i} initial={{ opacity: 0, scale: 0.8, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }} whileHover={{ scale: 1.05, y: -4 }} className="glass rounded-xl p-4 hover-lift cursor-default">
+          <motion.div 
+            key={i} 
+            initial={{ opacity: 0, scale: 0.8, y: 20 }} 
+            animate={{ opacity: 1, scale: 1, y: 0 }} 
+            transition={{ delay: i * 0.1, type: 'spring', stiffness: 200 }} 
+            whileHover={{ scale: 1.03, y: -2 }} 
+            className="bg-white/5 border border-white/5 hover:border-white/10 hover:bg-white/10 rounded-2xl p-5 transition-all duration-300 hover:shadow-[0_8px_30px_rgba(14,165,233,0.08)] cursor-default"
+          >
             <motion.div
-              className={`w-10 h-10 rounded-lg bg-gradient-to-r ${s.color} flex items-center justify-center mb-3`}
+              className={`w-10 h-10 rounded-xl bg-gradient-to-r ${s.color} flex items-center justify-center mb-3 border border-white/5 shadow-md`}
               animate={{ rotate: [0, 5, -5, 0] }}
               transition={{ duration: 4, repeat: Infinity, delay: i * 0.5 }}
             >
               <s.icon className="w-5 h-5 text-white" />
             </motion.div>
-            <motion.p className="text-2xl font-bold text-white" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.15 + 0.3 }}>{s.value.toLocaleString()}</motion.p>
-            <p className="text-xs text-dark-400">{s.label}</p>
+            <motion.p className="text-2xl font-bold text-white leading-tight mb-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.15 + 0.3 }}>{s.value.toLocaleString()}</motion.p>
+            <p className="text-xs text-dark-400 font-medium">{s.label}</p>
           </motion.div>
         ))}
       </div>
-      {events && Object.keys(events).length > 0 && <div><h3 className="text-sm font-medium text-dark-300 mb-3">Activity</h3><div className="space-y-2">{Object.entries(events).map(([e, c]) => (<motion.div key={e} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex items-center justify-between py-2 px-3 rounded-lg bg-dark-900/30 hover:bg-dark-900/50 transition-colors"><span className="text-sm text-dark-200">{e}</span><span className="text-sm font-medium text-white">{c}</span></motion.div>))}</div></div>}
+      {events && Object.keys(events).length > 0 && (
+        <div className="mt-4 pt-2">
+          <h3 className="text-sm font-semibold text-white mb-3">Activity</h3>
+          <div className="space-y-2">
+            {Object.entries(events).map(([e, c]) => (
+              <motion.div 
+                key={e} 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }} 
+                className="flex items-center justify-between py-2.5 px-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+              >
+                <span className="text-sm text-dark-200 font-medium">{e}</span>
+                <span className="text-sm font-bold text-white">{c}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -276,18 +321,53 @@ function CommandPalette({ onClose, onCommand }) {
   useEffect(() => { fetch(`${API}/api/commands`).then(r => r.json()).then(d => setCommands(d.commands || {})).catch(() => {}) }, [])
   const filtered = Object.entries(commands).filter(([c]) => c.includes(filter.toLowerCase()))
   return (
-    <motion.div initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }} className="glass rounded-2xl p-4 mb-4 border border-white/10 max-h-80 overflow-y-auto scrollbar-thin">
-      <div className="flex items-center justify-between mb-4"><div className="flex items-center gap-2"><motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}><Command className="w-5 h-5 text-primary-400" /></motion.div><h3 className="text-sm font-medium text-white">Commands</h3><kbd className="ml-2 px-1.5 py-0.5 rounded bg-dark-800 border border-white/10 text-[10px] text-dark-400 font-mono">⌘K</kbd></div><button onClick={onClose} className="p-1 rounded hover:bg-white/10 transition-colors"><X className="w-4 h-4 text-dark-400" /></button></div>
-      <div className="relative mb-3 input-glow rounded-lg">
-        <input type="text" value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter commands..." className="w-full px-3 py-2 rounded-lg bg-dark-900/50 border border-white/10 text-sm text-white placeholder:text-dark-500 outline-none" autoFocus />
+    <motion.div initial={{ opacity: 0, y: -20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.95 }} className="glass-premium rounded-2xl p-5 mb-4 border border-white/5 shadow-2xl max-h-80 overflow-y-auto scrollbar-thin relative overflow-hidden">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+        <div className="flex items-center gap-2">
+          <motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}>
+            <Command className="w-5 h-5 text-primary-400" />
+          </motion.div>
+          <h3 className="text-sm font-bold text-white">Commands</h3>
+          <kbd className="ml-2 px-1.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] text-dark-400 font-mono">⌘K</kbd>
+        </div>
+        <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/10 hover:text-white text-dark-400 transition-colors"><X className="w-5 h-5" /></button>
       </div>
-      <div className="space-y-1">{filtered.map(([cmd, desc], i) => { const Icon = commandIcons[cmd] || Command; return (
-        <motion.button key={cmd} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }} whileHover={{ x: 6, backgroundColor: 'rgba(255,255,255,0.05)' }} onClick={() => onCommand(cmd + ' ')} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors">
-          <motion.div whileHover={{ rotate: 15 }}><Icon className="w-4 h-4 text-primary-400" /></motion.div>
-          <div className="flex-1"><span className="text-sm font-mono text-white">{cmd}</span><p className="text-xs text-dark-400">{desc}</p></div>
-          <ArrowRight className="w-4 h-4 text-dark-500" />
-        </motion.button>
-      ) })}</div>
+      <div className="relative mb-3">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-400" />
+        <input 
+          type="text" 
+          value={filter} 
+          onChange={e => setFilter(e.target.value)} 
+          placeholder="Filter commands..." 
+          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-dark-900/40 border border-white/10 text-sm text-white placeholder:text-dark-500 outline-none focus:border-primary-500/40 transition-colors" 
+          autoFocus 
+        />
+      </div>
+      <div className="space-y-1">
+        {filtered.map(([cmd, desc], i) => { 
+          const Icon = commandIcons[cmd] || Command; 
+          return (
+            <motion.button 
+              key={cmd} 
+              initial={{ opacity: 0, x: -10 }} 
+              animate={{ opacity: 1, x: 0 }} 
+              transition={{ delay: i * 0.03 }} 
+              whileHover={{ x: 6 }} 
+              onClick={() => onCommand(cmd + ' ')} 
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-colors border border-transparent hover:border-white/5 hover:bg-white/5"
+            >
+              <motion.div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center flex-shrink-0" whileHover={{ rotate: 15 }}>
+                <Icon className="w-4 h-4 text-primary-400" />
+              </motion.div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-mono font-semibold text-white">{cmd}</span>
+                <p className="text-xs text-dark-400 truncate">{desc}</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-dark-500" />
+            </motion.button>
+          ) 
+        })}
+      </div>
     </motion.div>
   )
 }
@@ -351,19 +431,19 @@ function StepsPanel({ steps, show, onToggle }) {
 
 function SettingsPanel({ onClose, backendOnline }) {
   return (
-    <motion.div initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }} className="glass rounded-2xl p-6 mb-4 border border-white/10">
+    <motion.div initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: -10 }} transition={{ type: 'spring', stiffness: 300, damping: 25 }} className="glass-premium rounded-2xl p-6 mb-4 border border-white/5 shadow-2xl relative overflow-hidden">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2"><motion.div animate={{ rotate: 360 }} transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}><Settings className="w-5 h-5 text-primary-400" /></motion.div><h3 className="text-lg font-bold text-gradient">Settings</h3></div>
         <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><X className="w-5 h-5 text-dark-400" /></button>
       </div>
       <div className="space-y-4 stagger-children">
-        <div className="glass rounded-xl p-4 hover-lift">
+        <div className="bg-white/5 border border-white/5 hover:border-white/10 rounded-xl p-4 hover-lift duration-300">
           <h4 className="text-sm font-medium text-white mb-3">Model</h4>
           <div className="flex items-center gap-3">
             <AnimatedLogo size="md" />
-            <div><p className="text-sm text-white">Qwen 2.5 — 7B</p><p className="text-xs text-dark-400">Local via Ollama</p></div>
+            <div><p className="text-sm text-white font-medium">Qwen 2.5 — 7B</p><p className="text-xs text-dark-400">Local via Ollama</p></div>
             <motion.div
-              className={`ml-auto px-2.5 py-1 rounded-full text-xs font-medium ${backendOnline ? 'bg-green-500/20 text-green-400 border border-green-500/20' : 'bg-red-500/20 text-red-400 border border-red-500/20'}`}
+              className={`ml-auto px-2.5 py-1 rounded-full text-xs font-semibold ${backendOnline ? 'bg-green-500/20 text-green-400 border border-green-500/25 shadow-[0_0_12px_rgba(34,197,94,0.1)]' : 'bg-red-500/20 text-red-400 border border-red-500/25'}`}
               animate={backendOnline ? { boxShadow: ['0 0 0px rgba(34,197,94,0)', '0 0 12px rgba(34,197,94,0.3)', '0 0 0px rgba(34,197,94,0)'] } : {}}
               transition={{ duration: 2, repeat: Infinity }}
             >
@@ -371,7 +451,7 @@ function SettingsPanel({ onClose, backendOnline }) {
             </motion.div>
           </div>
         </div>
-        <div className="glass rounded-xl p-4 hover-lift">
+        <div className="bg-white/5 border border-white/5 hover:border-white/10 rounded-xl p-4 hover-lift duration-300">
           <h4 className="text-sm font-medium text-white mb-3">Keyboard Shortcuts</h4>
           <div className="space-y-2">
             {[['⌘ K', 'Command palette'], ['⌘ N', 'New chat'], ['Enter', 'Send message'], ['Shift + Enter', 'New line']].map(([key, desc]) => (
@@ -382,7 +462,7 @@ function SettingsPanel({ onClose, backendOnline }) {
             ))}
           </div>
         </div>
-        <div className="glass rounded-xl p-4 hover-lift">
+        <div className="bg-white/5 border border-white/5 hover:border-white/10 rounded-xl p-4 hover-lift duration-300">
           <h4 className="text-sm font-medium text-white mb-3">Available Tools</h4>
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(toolIcons).map(([name, Icon], i) => (
@@ -391,8 +471,8 @@ function SettingsPanel({ onClose, backendOnline }) {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.04 }}
-                whileHover={{ scale: 1.05, backgroundColor: 'rgba(14,165,233,0.1)' }}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-dark-900/30 transition-colors cursor-default"
+                whileHover={{ scale: 1.05, backgroundColor: 'rgba(14,165,233,0.08)', borderColor: 'rgba(14,165,233,0.2)' }}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-dark-900/30 border border-transparent transition-all cursor-default"
               >
                 <Icon className="w-3.5 h-3.5 text-primary-400" />
                 <span className="text-xs text-dark-300">{name.replace(/_/g, ' ')}</span>
@@ -425,43 +505,43 @@ function StatusBadge({ online }) {
 /* ===== Welcome Hero ===== */
 function WelcomeHero({ onSend }) {
   const suggestions = [
-    { icon: Search, text: "Latest AI news", query: "What are the latest AI developments?", gradient: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/20' },
-    { icon: Cloud, text: "Weather today", query: "What is the weather in Delhi?", gradient: 'from-sky-500/20 to-blue-500/20', border: 'border-sky-500/20' },
-    { icon: Bitcoin, text: "Crypto prices", query: "What is Bitcoin price?", gradient: 'from-yellow-500/20 to-orange-500/20', border: 'border-yellow-500/20' },
-    { icon: Terminal, text: "Write Python code", query: "Write a Python script to calculate fibonacci", gradient: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/20' },
-    { icon: Calculator, text: "Math & calculations", query: "Calculate the compound interest on $10,000 at 5% for 10 years", gradient: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/20' },
-    { icon: Globe, text: "Web research", query: "Search the web for SpaceX latest launch", gradient: 'from-indigo-500/20 to-violet-500/20', border: 'border-indigo-500/20' },
+    { icon: Search, text: "Latest AI news", desc: "Stay informed on modern AI and research developments.", query: "What are the latest AI developments?", gradient: 'from-blue-500/25 to-cyan-500/25', border: 'border-blue-500/15', glow: 'glass-premium-glow-primary' },
+    { icon: Cloud, text: "Weather today", desc: "Get real-time forecast and reports for your location.", query: "What is the weather in Delhi?", gradient: 'from-sky-500/25 to-blue-500/25', border: 'border-sky-500/15', glow: 'glass-premium-glow-primary' },
+    { icon: Bitcoin, text: "Crypto prices", desc: "Track market rates and analysis for top tokens.", query: "What is Bitcoin price?", gradient: 'from-yellow-500/25 to-orange-500/25', border: 'border-yellow-500/15', glow: 'glass-premium-glow-accent' },
+    { icon: Terminal, text: "Write Python code", desc: "Generate scripts, algorithms, or debug programming logic.", query: "Write a Python script to calculate fibonacci", gradient: 'from-purple-500/25 to-pink-500/25', border: 'border-purple-500/15', glow: 'glass-premium-glow-accent' },
+    { icon: Calculator, text: "Math & calculations", desc: "Solve compound interest, formulas, or equations.", query: "Calculate the compound interest on $10,000 at 5% for 10 years", gradient: 'from-green-500/25 to-emerald-500/25', border: 'border-green-500/15', glow: 'glass-premium-glow-primary' },
+    { icon: Globe, text: "Web research", desc: "Scan live web sources for news and specifications.", query: "Search the web for SpaceX latest launch", gradient: 'from-indigo-500/25 to-violet-500/25', border: 'border-indigo-500/15', glow: 'glass-premium-glow-primary' },
   ]
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center min-h-[60vh] text-center page-enter">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center min-h-[60vh] text-center page-enter p-4 md:p-8">
       {/* Animated floating logo */}
       <motion.div
         className="relative mb-8"
-        animate={{ y: [0, -15, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        animate={{ y: [0, -12, 0] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
       >
         <motion.div
           className="absolute inset-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-3xl blur-3xl"
-          animate={{ opacity: [0.2, 0.4, 0.2], scale: [0.9, 1.1, 0.9] }}
-          transition={{ duration: 3, repeat: Infinity }}
+          animate={{ opacity: [0.15, 0.3, 0.15], scale: [0.95, 1.05, 0.95] }}
+          transition={{ duration: 4, repeat: Infinity }}
         />
         <AnimatedLogo size="lg" />
       </motion.div>
 
       {/* Animated title */}
       <motion.h2
-        className="text-5xl font-bold mb-3 text-gradient"
-        initial={{ opacity: 0, y: 20 }}
+        className="text-4xl md:text-5xl font-extrabold mb-4 text-gradient leading-tight tracking-tight"
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 180 }}
       >
         Welcome to NEXUS
       </motion.h2>
 
       {/* Subtitle with typing effect */}
       <motion.p
-        className="text-dark-400 max-w-lg mb-10"
+        className="text-dark-400 max-w-lg mb-12 text-sm md:text-base leading-relaxed"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
@@ -470,31 +550,33 @@ function WelcomeHero({ onSend }) {
       </motion.p>
 
       {/* Suggestion cards with staggered entrance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
         {suggestions.map((item, i) => (
           <motion.button
             key={i}
-            initial={{ opacity: 0, y: 25, scale: 0.9 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.5 + i * 0.08, type: 'spring', stiffness: 200 }}
+            transition={{ delay: 0.5 + i * 0.06, type: 'spring', stiffness: 220, damping: 18 }}
             whileHover={{
-              scale: 1.04,
+              scale: 1.025,
               y: -4,
-              boxShadow: '0 8px 30px rgba(14,165,233,0.12)',
             }}
-            whileTap={{ scale: 0.97 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onSend(item.query)}
-            className={`flex items-center gap-3 px-4 py-3.5 rounded-xl glass hover:bg-white/10 text-left group border ${item.border} hover:border-primary-500/40 transition-all`}
+            className={`flex items-start gap-4 p-4 rounded-2xl glass-premium ${item.glow} text-left group border ${item.border} transition-all duration-300`}
           >
             <motion.div
-              className={`w-9 h-9 rounded-lg bg-gradient-to-br ${item.gradient} flex items-center justify-center flex-shrink-0`}
-              whileHover={{ rotate: 15 }}
+              className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center flex-shrink-0 border border-white/5`}
+              whileHover={{ rotate: 10 }}
             >
-              <item.icon className="w-4 h-4 text-white group-hover:text-primary-300 transition-colors" />
+              <item.icon className="w-5 h-5 text-white group-hover:text-primary-300 transition-colors" />
             </motion.div>
-            <span className="text-sm text-dark-200 group-hover:text-white transition-colors">{item.text}</span>
-            <motion.div className="ml-auto" whileHover={{ x: 4 }}>
-              <ArrowRight className="w-4 h-4 text-dark-500 group-hover:text-primary-400 transition-colors" />
+            <div className="flex-1 min-w-0 pr-2">
+              <span className="block text-sm font-semibold text-white group-hover:text-primary-300 transition-colors mb-0.5">{item.text}</span>
+              <span className="block text-xs text-dark-400 group-hover:text-dark-200 transition-colors leading-normal">{item.desc}</span>
+            </div>
+            <motion.div className="self-center flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:text-primary-400 transition-all" whileHover={{ x: 2 }}>
+              <ArrowRight className="w-4 h-4 text-dark-400 group-hover:text-primary-400" />
             </motion.div>
           </motion.button>
         ))}
@@ -838,48 +920,59 @@ export default function App() {
                 messages.map((message, idx) => (
                   <motion.div
                     key={message.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                    initial={{ opacity: 0, y: 20, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-                    className={`flex gap-4 mb-6 timestamp-hover message-glow ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+                    className={`flex gap-4 mb-6 timestamp-hover ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
                     {message.role === 'assistant' && (
                       <motion.div
-                        className="w-8 h-8 rounded-lg flex-shrink-0 bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mt-1 glow-primary"
-                        initial={{ scale: 0, rotate: -180 }}
+                        className="w-9 h-9 rounded-xl flex-shrink-0 bg-gradient-to-br from-primary-500 via-blue-500 to-accent-500 flex items-center justify-center mt-1 text-white shadow-[0_0_12px_rgba(14,165,233,0.3)] relative overflow-hidden"
+                        initial={{ scale: 0, rotate: -90 }}
                         animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 300 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       >
-                        <Bot className="w-4 h-4 text-white" />
+                        <Bot className="w-5 h-5 text-white relative z-10" />
+                        <motion.div
+                          className="absolute inset-0 bg-white/20"
+                          animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0.3] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        />
                       </motion.div>
                     )}
                     <motion.div
-                      className={`max-w-[85%] rounded-2xl ${message.role === 'user' ? 'bg-gradient-to-r from-primary-600 to-accent-600 text-white px-5 py-3 shadow-lg shadow-primary-500/10' : message.isError ? 'bg-red-500/10 border border-red-500/20 text-red-300 px-5 py-3' : 'text-dark-100'}`}
-                      whileHover={message.role === 'user' ? { scale: 1.01, boxShadow: '0 8px 30px rgba(14,165,233,0.2)' } : {}}
+                      className={`max-w-[80%] rounded-2xl ${
+                        message.role === 'user'
+                          ? 'rounded-tr-none text-white px-5 py-3.5 text-sm user-chat-bubble'
+                          : message.isError
+                          ? 'bg-red-500/10 border border-red-500/20 text-red-300 px-5 py-4'
+                          : 'assistant-chat-bubble assistant-accent-bar'
+                      }`}
+                      whileHover={{ y: -2 }}
                     >
                       {message.role === 'assistant' && !message.isError ? (
                         <div className="prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ node, inline, className, children, ...props }) { const match = /language-(\w+)/.exec(className || ''); return !inline ? <CodeBlock language={match?.[1] || 'text'} code={String(children).replace(/\n$/, '')} /> : <code className="bg-dark-800 px-1.5 py-0.5 rounded text-sm text-primary-300" {...props}>{children}</code> } }}>{message.content}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ node, inline, className, children, ...props }) { const match = /language-(\w+)/.exec(className || ''); return !inline ? <CodeBlock language={match?.[1] || 'text'} code={String(children).replace(/\n$/, '')} /> : <code className="bg-dark-900/60 border border-white/5 px-1.5 py-0.5 rounded text-sm text-primary-300" {...props}>{children}</code> } }}>{message.content}</ReactMarkdown>
                         </div>
                       ) : (
-                        <p className="text-sm leading-relaxed">{message.content}</p>
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                       )}
                       {message.role === 'assistant' && !message.isError && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex items-center gap-1 mt-3 pt-3 border-t border-white/5">
-                          <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={() => { navigator.clipboard.writeText(message.content); setCopiedId(message.id); setTimeout(() => setCopiedId(null), 2000) }} className="p-1.5 rounded-md hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Copy">{copiedId === message.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}</motion.button>
-                          <motion.button whileHover={{ scale: 1.2, rotate: 180 }} whileTap={{ scale: 0.8 }} onClick={handleRegenerate} className="p-1.5 rounded-md hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Regenerate"><RefreshCw className="w-3.5 h-3.5" /></motion.button>
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/5">
+                          <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }} onClick={() => { navigator.clipboard.writeText(message.content); setCopiedId(message.id); setTimeout(() => setCopiedId(null), 2000) }} className="p-1.5 rounded-lg hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Copy">{copiedId === message.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}</motion.button>
+                          <motion.button whileHover={{ scale: 1.15, rotate: 180 }} whileTap={{ scale: 0.85 }} onClick={handleRegenerate} className="p-1.5 rounded-lg hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Regenerate"><RefreshCw className="w-3.5 h-3.5" /></motion.button>
                         </motion.div>
                       )}
                       {message.timestamp && <span className="msg-time text-[10px] text-dark-500 mt-1 block">{message.timestamp}</span>}
                     </motion.div>
                     {message.role === 'user' && (
                       <motion.div
-                        className="w-8 h-8 rounded-lg flex-shrink-0 bg-dark-700 flex items-center justify-center mt-1"
+                        className="w-9 h-9 rounded-xl flex-shrink-0 bg-dark-900 border border-white/10 flex items-center justify-center mt-1 text-primary-400 shadow-[0_0_10px_rgba(14,165,233,0.1)]"
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 400 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
                       >
-                        <User className="w-4 h-4" />
+                        <User className="w-5 h-5 text-primary-300" />
                       </motion.div>
                     )}
                   </motion.div>
@@ -893,7 +986,7 @@ export default function App() {
                   <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mt-1 glow-primary">
                     <Bot className="w-4 h-4 text-white" />
                   </div>
-                  <div className="glass rounded-2xl px-5 py-3 max-w-[85%]">
+                  <div className="bg-white/5 border border-white/5 rounded-2xl px-5 py-3 max-w-[85%]">
                     {currentStep.type === 'thinking' && (<div className="flex items-center gap-2 text-dark-300 text-sm"><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Loader2 className="w-4 h-4 text-primary-400" /></motion.div>{currentStep.content}</div>)}
                     {currentStep.type === 'tool' && currentStep.tool === 'web_search' && (<div className="space-y-2"><div className="flex items-center gap-2"><motion.div className="w-6 h-6 rounded-md bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}><Globe className="w-3 h-3 text-white" /></motion.div><span className="text-sm font-medium text-white">Searching the internet...</span></div>{currentStep.result && (<div className="bg-dark-900/50 rounded-lg px-3 py-2 text-xs text-dark-300 max-h-24 overflow-y-auto scrollbar-thin">{currentStep.result}</div>)}</div>)}
                     {currentStep.type === 'tool' && currentStep.tool !== 'web_search' && (<div className="space-y-2"><div className="flex items-center gap-2">{(() => { const Icon = toolIcons[currentStep.tool] || Zap; const gradient = toolColors[currentStep.tool] || 'from-primary-500 to-accent-500'; return (<><motion.div className={`w-6 h-6 rounded-md bg-gradient-to-r ${gradient} flex items-center justify-center`} animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 1, repeat: Infinity }}><Icon className="w-3 h-3 text-white" /></motion.div><span className="text-sm font-medium text-white">{currentStep.tool.replace('_', ' ')}</span></>)})()}</div>{currentStep.result && (<div className="bg-dark-900/50 rounded-lg px-3 py-2 text-xs text-dark-300 font-mono max-h-24 overflow-y-auto scrollbar-thin">{currentStep.result}</div>)}</div>)}
@@ -936,13 +1029,21 @@ export default function App() {
                   />
                 </motion.button>
               </motion.div>
-              <motion.p
-                className="text-center text-xs text-dark-500 mt-2"
-                animate={{ opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 4, repeat: Infinity }}
-              >
-                NEXUS can make mistakes. Verify important information.
-              </motion.p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2.5 px-2 text-[10px] md:text-xs text-dark-500 select-none">
+                <motion.p
+                  animate={{ opacity: [0.5, 0.8, 0.5] }}
+                  transition={{ duration: 4, repeat: Infinity }}
+                >
+                  NEXUS can make mistakes. Verify important information.
+                </motion.p>
+                <div className="hidden sm:flex items-center gap-3">
+                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-dark-900 border border-white/5 text-[10px] text-dark-400 font-mono">Enter</kbd> to send</span>
+                  <span className="w-1 h-1 rounded-full bg-dark-700" />
+                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-dark-900 border border-white/5 text-[10px] text-dark-400 font-mono">Shift + Enter</kbd> line break</span>
+                  <span className="w-1 h-1 rounded-full bg-dark-700" />
+                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-dark-900 border border-white/5 text-[10px] text-dark-400 font-mono">⌘K</kbd> menu</span>
+                </div>
+              </div>
             </motion.form>
           </div>
         </div>
