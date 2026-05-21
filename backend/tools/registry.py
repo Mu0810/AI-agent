@@ -5,14 +5,23 @@ import os
 import urllib.request
 import urllib.parse
 from datetime import datetime
-from duckduckgo_search import DDGS
 from bs4 import BeautifulSoup
 import requests
+
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    try:
+        from ddgs import DDGS
+    except ImportError:
+        DDGS = None
 
 IS_PRODUCTION = os.getenv("PRODUCTION", "false").lower() == "true"
 
 def web_search(query: str, max_results: int = 5) -> str:
     try:
+        if DDGS is None:
+            return _fallback_search(query, max_results)
         results = DDGS().text(query, max_results=max_results)
         if not results:
             return _fallback_search(query, max_results)
@@ -30,11 +39,37 @@ def _fallback_search(query: str, max_results: int = 5) -> str:
         html = urllib.request.urlopen(req, timeout=10).read()
         soup = BeautifulSoup(html, "html.parser")
         results = []
-        for a in soup.select("a.result__snippet")[:max_results]:
-            title = a.parent.find("a", class_="result__title")
-            title_text = title.get_text(strip=True) if title else "No title"
-            body = a.get_text(strip=True)
-            results.append(f"Title: {title_text}\nSnippet: {body}")
+        
+        def extract_url(href):
+            if not href:
+                return ""
+            if href.startswith("//"):
+                href = "https:" + href
+            elif href.startswith("/"):
+                href = "https://duckduckgo.com" + href
+            try:
+                parsed = urllib.parse.urlparse(href)
+                qs = urllib.parse.parse_qs(parsed.query)
+                uddg = qs.get("uddg")
+                if uddg:
+                    return uddg[0]
+            except Exception:
+                pass
+            return href
+
+        for i, r in enumerate(soup.select(".result")[:max_results], 1):
+            title_el = r.find("h2", class_="result__title")
+            title_a = title_el.find("a", class_="result__a") if title_el else None
+            title_text = title_a.get_text(strip=True) if title_a else "No title"
+            
+            href = title_a.get("href", "") if title_a else ""
+            actual_url = extract_url(href)
+            
+            snippet_el = r.find("a", class_="result__snippet")
+            snippet_text = snippet_el.get_text(strip=True) if snippet_el else ""
+            
+            results.append(f"[{i}] {title_text}\nURL: {actual_url}\n{snippet_text}")
+            
         return "\n\n".join(results) if results else f"No results found for '{query}'."
     except Exception as e:
         return f"Search failed: {str(e)}"
