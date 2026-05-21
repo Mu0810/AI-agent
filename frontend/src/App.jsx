@@ -8,7 +8,7 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import FileUpload from './components/FileUpload'
 import KnowledgeBase from './components/KnowledgeBase'
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 const toolIcons = { web_search: Globe, web_scrape: Globe, calculate: Calculator, execute_code: Terminal, read_file: FileText, write_file: FileText, list_directory: Folder, get_current_time: Clock, get_weather: Cloud, get_crypto_price: Bitcoin, get_stock_price: TrendingUp }
 const toolColors = { web_search: 'from-blue-500 to-cyan-500', web_scrape: 'from-blue-500 to-cyan-500', calculate: 'from-green-500 to-emerald-500', execute_code: 'from-purple-500 to-pink-500', read_file: 'from-amber-500 to-orange-500', write_file: 'from-amber-500 to-orange-500', list_directory: 'from-amber-500 to-orange-500', get_current_time: 'from-gray-500 to-slate-500', get_weather: 'from-sky-500 to-blue-500', get_crypto_price: 'from-yellow-500 to-orange-500', get_stock_price: 'from-green-500 to-emerald-500' }
 const commandIcons = { '/analyze': Search, '/summarize': BookOpen, '/explain': MessageSquare, '/translate': MessageSquare, '/code': Terminal, '/debug': Bug, '/compare': ArrowLeftRight, '/brainstorm': Lightbulb, '/save': Save }
