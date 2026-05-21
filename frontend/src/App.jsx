@@ -417,7 +417,7 @@ function StatusBadge({ online }) {
         } : {}}
         transition={{ duration: 2, repeat: Infinity }}
       />
-      <p className="text-xs text-dark-400">{backendOnline ? 'Online' : 'Offline'} • Llama 3.3</p>
+      <p className="text-xs text-dark-400">{online ? 'Online' : 'Offline'} • Llama 3.3</p>
     </div>
   )
 }
