@@ -502,3 +502,58 @@ textarea.auto-resize {
 .page-enter {
   animation: fade-in-scale 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* ===== PERPLEXITY DESIGN SYSTEM OVERRIDES ===== */
+.bg-perplexity-bg {
+  background-color: #0b0d0e;
+}
+.bg-perplexity-card {
+  background-color: #191c1d;
+}
+.bg-perplexity-input {
+  background-color: #191c1d;
+}
+.bg-perplexity-sidebar {
+  background-color: #0b0d0e;
+}
+.border-perplexity {
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Citation Badge */
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+  border-radius: 9999px;
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 2px;
+  margin-right: 2px;
+  transition: all 0.2s ease;
+  vertical-align: super;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.citation-badge:hover {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+/* Sources Card */
+.source-card {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.source-card:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}

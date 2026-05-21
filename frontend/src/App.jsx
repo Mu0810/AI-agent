@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, Bot, User, Send, Globe, Terminal, FileText, Folder, Clock, Calculator, Cloud, TrendingUp, Bitcoin, MessageSquare, Plus, RotateCcw, Copy, Check, Cpu, Layers, ArrowRight, Loader2, Mic, MicOff, BarChart3, Download, Command, X, Volume2, Search, BookOpen, Bug, Lightbulb, ArrowLeftRight, Save, Zap, Upload, RefreshCw, Trash2, Settings, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { Brain, Bot, User, Send, Globe, Terminal, FileText, Folder, Clock, Calculator, Cloud, TrendingUp, Bitcoin, MessageSquare, Plus, RotateCcw, Copy, Check, Cpu, Layers, ArrowRight, Loader2, Mic, MicOff, BarChart3, Download, Command, X, Volume2, Search, BookOpen, Bug, Lightbulb, ArrowLeftRight, Save, Zap, Upload, RefreshCw, Trash2, Settings, ChevronDown, ChevronUp, Sparkles, Paperclip } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
@@ -8,12 +8,152 @@ import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import FileUpload from './components/FileUpload'
 import KnowledgeBase from './components/KnowledgeBase'
 
+
 const API = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 const toolIcons = { web_search: Globe, web_scrape: Globe, calculate: Calculator, execute_code: Terminal, read_file: FileText, write_file: FileText, list_directory: Folder, get_current_time: Clock, get_weather: Cloud, get_crypto_price: Bitcoin, get_stock_price: TrendingUp }
 const toolColors = { web_search: 'from-blue-500 to-cyan-500', web_scrape: 'from-blue-500 to-cyan-500', calculate: 'from-green-500 to-emerald-500', execute_code: 'from-purple-500 to-pink-500', read_file: 'from-amber-500 to-orange-500', write_file: 'from-amber-500 to-orange-500', list_directory: 'from-amber-500 to-orange-500', get_current_time: 'from-gray-500 to-slate-500', get_weather: 'from-sky-500 to-blue-500', get_crypto_price: 'from-yellow-500 to-orange-500', get_stock_price: 'from-green-500 to-emerald-500' }
 const commandIcons = { '/analyze': Search, '/summarize': BookOpen, '/explain': MessageSquare, '/translate': MessageSquare, '/code': Terminal, '/debug': Bug, '/compare': ArrowLeftRight, '/brainstorm': Lightbulb, '/save': Save }
 
+// Helper to extract domain and clean it
+const getDomain = (url) => {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch (e) {
+    return url;
+  }
+};
+
+// Parse web search results steps to build a structured sources array
+const extractSourcesFromSteps = (steps) => {
+  if (!steps || !Array.isArray(steps)) return [];
+  const sources = [];
+  const seenUrls = new Set();
+
+  steps.forEach(step => {
+    if (step.type === 'tool' && step.tool === 'web_search' && step.result) {
+      const blocks = step.result.split('\n\n');
+      blocks.forEach(block => {
+        const lines = block.split('\n');
+        if (lines.length >= 2) {
+          const firstLine = lines[0];
+          const indexMatch = firstLine.match(/^\[(\d+)\]\s*(.*)/);
+          const title = indexMatch ? indexMatch[2].trim() : firstLine.trim();
+          
+          let url = '';
+          const urlLine = lines.find(l => l.startsWith('URL: '));
+          if (urlLine) {
+            url = urlLine.replace(/^URL:\s*/, '').trim();
+          }
+
+          if (url && !seenUrls.has(url)) {
+            seenUrls.add(url);
+            sources.push({
+              title: title || getDomain(url),
+              url: url,
+              domain: getDomain(url),
+              index: indexMatch ? parseInt(indexMatch[1]) : (sources.length + 1)
+            });
+          }
+        }
+      });
+    }
+  });
+
+  return sources;
+};
+
+// Formats plain text citation tokens like "[1]" into markdown links "[1](url)"
+const formatCitations = (content, sources) => {
+  if (!sources || sources.length === 0) return content;
+  let formatted = content;
+  
+  sources.forEach(source => {
+    const indexStr = String(source.index);
+    const regex = new RegExp(`\\[${indexStr}\\](?![\\(\\[])`, 'g');
+    formatted = formatted.replace(regex, `[${indexStr}](${source.url})`);
+  });
+  
+  return formatted;
+};
+
+function FocusDropdown({ focusMode, setFocusMode }) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const options = [
+    { id: 'all', label: 'All', icon: Globe, desc: 'Search the entire web' },
+    { id: 'writing', label: 'Writing', icon: FileText, desc: 'Generate text or summarize' },
+    { id: 'academic', label: 'Academic', icon: BookOpen, desc: 'Search published papers' },
+    { id: 'code', label: 'Code', icon: Terminal, desc: 'Write or debug code' },
+    { id: 'search', label: 'Web Search', icon: Search, desc: 'Force active internet search' }
+  ];
+
+  const activeOption = options.find(o => o.id === focusMode) || options[0];
+  const ActiveIcon = activeOption.icon;
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+      >
+        <ActiveIcon className="w-3.5 h-3.5 text-emerald-500" />
+        <span>Focus: {activeOption.label}</span>
+        <ChevronDown className="w-3 h-3 text-zinc-500" />
+      </button>
+      
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute left-0 bottom-full mb-2 w-64 bg-perplexity-card border border-white/10 rounded-xl shadow-2xl p-1.5 z-30"
+          >
+            {options.map(opt => {
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    setFocusMode(opt.id);
+                    setOpen(false);
+                  }}
+                  className={`w-full flex items-start gap-3 p-2 rounded-lg text-left transition-colors ${
+                    focusMode === opt.id
+                      ? 'bg-white/5 text-white'
+                      : 'hover:bg-white/5 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  <Icon className="w-4 h-4 mt-0.5 text-emerald-500" />
+                  <div>
+                    <div className="text-xs font-semibold">{opt.label}</div>
+                    <div className="text-[10px] text-zinc-500 mt-0.5">{opt.desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 /* ===== Animated Background with Particles + Floating Orbs ===== */
+
 function AnimatedBackground() {
   const canvasRef = useRef(null)
   useEffect(() => {
@@ -172,31 +312,21 @@ function CodeBlock({ language, code }) {
 
 function TypingIndicator() {
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex gap-4 mb-6">
-      <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mt-1 glow-primary">
-        <Bot className="w-4 h-4 text-white" />
-      </div>
-      <div className="assistant-chat-bubble assistant-accent-bar flex items-center gap-3 py-4">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-3 py-4 text-zinc-400">
+      <div className="flex gap-1.5">
         {[0, 1, 2].map(i => (
           <motion.div
             key={i}
-            className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary-400 to-accent-400"
+            className="w-2 h-2 rounded-full bg-emerald-500"
             animate={{
-              y: [0, -10, 0],
-              scale: [1, 1.4, 1],
-              opacity: [0.5, 1, 0.5],
+              y: [0, -6, 0],
+              opacity: [0.5, 1, 0.5]
             }}
             transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
           />
         ))}
-        <motion.span
-          className="text-xs text-dark-400 ml-2"
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          NEXUS is thinking...
-        </motion.span>
       </div>
+      <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">NEXUS is thinking...</span>
     </motion.div>
   )
 }
@@ -373,27 +503,31 @@ function CommandPalette({ onClose, onCommand }) {
 }
 
 function SuggestedActions({ onSend }) {
-  const suggestions = ["Tell me more about this", "Can you give an example?", "What are the alternatives?", "Summarize the key points"]
+  const suggestions = [
+    "Tell me more about this",
+    "Can you give an example?",
+    "What are the alternatives?",
+    "Summarize the key points"
+  ]
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap gap-2 mt-3 mb-2">
-      {suggestions.map((s, i) => (
-        <motion.button
-          key={i}
-          initial={{ opacity: 0, y: 8, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: i * 0.07, type: 'spring', stiffness: 300 }}
-          whileHover={{ scale: 1.06, y: -2, boxShadow: '0 4px 20px rgba(14,165,233,0.15)' }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => onSend(s)}
-          className="px-3 py-1.5 rounded-lg text-xs bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary-500/40 text-dark-300 hover:text-white transition-all flex items-center gap-1.5 btn-ripple"
-        >
-          <motion.div animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 3, repeat: Infinity, delay: i * 0.5 }}>
-            <Sparkles className="w-3 h-3 text-primary-400" />
-          </motion.div>
-          {s}
-        </motion.button>
-      ))}
-    </motion.div>
+    <div className="mt-6 pt-4 border-t border-white/5">
+      <div className="flex items-center gap-2 mb-3 text-xs text-zinc-400 font-semibold uppercase tracking-wider">
+        <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+        <span>Related</span>
+      </div>
+      <div className="flex flex-col gap-2">
+        {suggestions.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => onSend(s)}
+            className="flex items-center justify-between w-full text-left px-4 py-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-zinc-300 hover:text-white transition-all group"
+          >
+            <span>{s}</span>
+            <ArrowRight className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors" />
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -401,7 +535,7 @@ function StepsPanel({ steps, show, onToggle }) {
   if (!steps.length) return null
   return (
     <div className="px-4 md:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <motion.button onClick={onToggle} whileHover={{ backgroundColor: 'rgba(255,255,255,0.05)' }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-dark-400 w-full transition-colors">
           <motion.div animate={{ rotate: show ? 180 : 0 }} transition={{ duration: 0.3 }}>
             <Cpu className="w-3.5 h-3.5 text-primary-400" />
@@ -485,7 +619,6 @@ function SettingsPanel({ onClose, backendOnline }) {
   )
 }
 
-/* ===== Animated Status Badge ===== */
 function StatusBadge({ online }) {
   return (
     <div className="flex items-center gap-1.5">
@@ -502,106 +635,186 @@ function StatusBadge({ online }) {
   )
 }
 
-/* ===== Welcome Hero ===== */
-function WelcomeHero({ onSend }) {
-  const suggestions = [
-    { icon: Search, text: "Latest AI news", desc: "Stay informed on modern AI and research developments.", query: "What are the latest AI developments?", gradient: 'from-blue-500/25 to-cyan-500/25', border: 'border-blue-500/15', glow: 'glass-premium-glow-primary' },
-    { icon: Cloud, text: "Weather today", desc: "Get real-time forecast and reports for your location.", query: "What is the weather in Delhi?", gradient: 'from-sky-500/25 to-blue-500/25', border: 'border-sky-500/15', glow: 'glass-premium-glow-primary' },
-    { icon: Bitcoin, text: "Crypto prices", desc: "Track market rates and analysis for top tokens.", query: "What is Bitcoin price?", gradient: 'from-yellow-500/25 to-orange-500/25', border: 'border-yellow-500/15', glow: 'glass-premium-glow-accent' },
-    { icon: Terminal, text: "Write Python code", desc: "Generate scripts, algorithms, or debug programming logic.", query: "Write a Python script to calculate fibonacci", gradient: 'from-purple-500/25 to-pink-500/25', border: 'border-purple-500/15', glow: 'glass-premium-glow-accent' },
-    { icon: Calculator, text: "Math & calculations", desc: "Solve compound interest, formulas, or equations.", query: "Calculate the compound interest on $10,000 at 5% for 10 years", gradient: 'from-green-500/25 to-emerald-500/25', border: 'border-green-500/15', glow: 'glass-premium-glow-primary' },
-    { icon: Globe, text: "Web research", desc: "Scan live web sources for news and specifications.", query: "Search the web for SpaceX latest launch", gradient: 'from-indigo-500/25 to-violet-500/25', border: 'border-indigo-500/15', glow: 'glass-premium-glow-primary' },
-  ]
+function SearchInputBox({
+  input,
+  setInput,
+  isProcessing,
+  onSubmit,
+  focusMode,
+  setFocusMode,
+  proMode,
+  setProMode,
+  onAttachClick,
+  onVoiceClick,
+  placeholder = "Ask anything..."
+}) {
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  }, [input]);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-full flex flex-col items-center justify-center min-h-[60vh] text-center page-enter p-4 md:p-8">
-      {/* Animated floating logo */}
-      <motion.div
-        className="relative mb-8"
-        animate={{ y: [0, -12, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <motion.div
-          className="absolute inset-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-3xl blur-3xl"
-          animate={{ opacity: [0.15, 0.3, 0.15], scale: [0.95, 1.05, 0.95] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        />
-        <AnimatedLogo size="lg" />
-      </motion.div>
-
-      {/* Animated title */}
-      <motion.h2
-        className="text-4xl md:text-5xl font-extrabold mb-4 text-gradient leading-tight tracking-tight"
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 180 }}
-      >
-        Welcome to NEXUS
-      </motion.h2>
-
-      {/* Subtitle with typing effect */}
-      <motion.p
-        className="text-dark-400 max-w-lg mb-12 text-sm md:text-base leading-relaxed"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-      >
-        Advanced AI agent with internet access, voice chat, real-time data, code execution, and smart memory.
-      </motion.p>
-
-      {/* Suggestion cards with staggered entrance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-2xl">
-        {suggestions.map((item, i) => (
-          <motion.button
-            key={i}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.5 + i * 0.06, type: 'spring', stiffness: 220, damping: 18 }}
-            whileHover={{
-              scale: 1.025,
-              y: -4,
-            }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onSend(item.query)}
-            className={`flex items-start gap-4 p-4 rounded-2xl glass-premium ${item.glow} text-left group border ${item.border} transition-all duration-300`}
+    <div className="bg-[#191c1d] border border-white/10 rounded-2xl p-3 flex flex-col focus-within:border-zinc-700 transition-all shadow-xl w-full">
+      <textarea
+        ref={textareaRef}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
+        placeholder={placeholder}
+        disabled={isProcessing}
+        rows={1}
+        className="w-full bg-transparent border-none outline-none resize-none px-2 py-1 text-sm placeholder:text-zinc-500 text-white disabled:opacity-50 min-h-[40px] max-h-[200px]"
+      />
+      
+      <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <FocusDropdown focusMode={focusMode} setFocusMode={setFocusMode} />
+          
+          <button
+            type="button"
+            onClick={onAttachClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
           >
-            <motion.div
-              className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.gradient} flex items-center justify-center flex-shrink-0 border border-white/5`}
-              whileHover={{ rotate: 10 }}
+            <Paperclip className="w-3.5 h-3.5 text-zinc-400" />
+            <span>Attach</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={onVoiceClick}
+            className="flex items-center justify-center p-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            title="Voice Input"
+          >
+            <Mic className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-zinc-400">Pro</span>
+            <button
+              type="button"
+              onClick={() => setProMode(!proMode)}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out outline-none ${
+                proMode ? 'bg-emerald-500' : 'bg-zinc-700'
+              }`}
             >
-              <item.icon className="w-5 h-5 text-white group-hover:text-primary-300 transition-colors" />
-            </motion.div>
-            <div className="flex-1 min-w-0 pr-2">
-              <span className="block text-sm font-semibold text-white group-hover:text-primary-300 transition-colors mb-0.5">{item.text}</span>
-              <span className="block text-xs text-dark-400 group-hover:text-dark-200 transition-colors leading-normal">{item.desc}</span>
-            </div>
-            <motion.div className="self-center flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:text-primary-400 transition-all" whileHover={{ x: 2 }}>
-              <ArrowRight className="w-4 h-4 text-dark-400 group-hover:text-primary-400" />
-            </motion.div>
-          </motion.button>
-        ))}
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  proMode ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+          
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={isProcessing || !input.trim()}
+            className={`p-2 rounded-full transition-all flex items-center justify-center ${
+              input.trim()
+                ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
+                : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+            }`}
+          >
+            {isProcessing ? (
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <ArrowRight className="w-4 h-4" />
+            )}
+          </button>
+        </div>
       </div>
-    </motion.div>
-  )
+    </div>
+  );
 }
 
-/* ===== Animated Sidebar Button ===== */
-function SidebarButton({ icon: Icon, label, onClick, extra, active }) {
+function LandingView({
+  input,
+  setInput,
+  isProcessing,
+  onSend,
+  focusMode,
+  setFocusMode,
+  proMode,
+  setProMode,
+  onAttachClick,
+  onVoiceClick
+}) {
+  const suggestions = [
+    { text: "Latest AI news", query: "What are the latest AI developments?" },
+    { text: "Weather today", query: "What is the weather in Delhi?" },
+    { text: "Crypto prices", query: "What is Bitcoin price?" },
+    { text: "Write Python code", query: "Write a Python script to calculate fibonacci" }
+  ];
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto text-center px-4 w-full page-enter">
+      <h2 className="text-4xl md:text-5xl font-normal tracking-tight text-white mb-8">
+        Where knowledge begins
+      </h2>
+
+      <div className="w-full mb-6 text-left">
+        <SearchInputBox
+          input={input}
+          setInput={setInput}
+          isProcessing={isProcessing}
+          onSubmit={() => onSend(input)}
+          focusMode={focusMode}
+          setFocusMode={setFocusMode}
+          proMode={proMode}
+          setProMode={setProMode}
+          onAttachClick={onAttachClick}
+          onVoiceClick={onVoiceClick}
+          placeholder="Ask anything..."
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+        {suggestions.map((item, i) => (
+          <button
+            key={i}
+            onClick={() => onSend(item.query)}
+            className="px-3.5 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            {item.text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SidebarButton({ icon: Icon, label, onClick, extra, active, collapsed }) {
   return (
     <motion.button
       onClick={onClick}
-      whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
+      whileHover={{ x: collapsed ? 0 : 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
       whileTap={{ scale: 0.98 }}
-      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-dark-300 transition-colors ${active ? 'bg-white/10 text-white' : 'hover:text-white'}`}
+      className={`flex items-center rounded-lg text-sm text-dark-300 transition-colors ${
+        collapsed ? 'justify-center p-3 w-10 h-10 mx-auto' : 'w-full gap-3 px-3 py-2 text-left'
+      } ${active ? 'bg-white/10 text-white' : 'hover:text-white'}`}
+      title={collapsed ? label : undefined}
     >
-      <motion.div whileHover={{ rotate: 15 }}>
+      <motion.div whileHover={{ rotate: 15 }} className="flex-shrink-0">
         <Icon className="w-4 h-4" />
       </motion.div>
-      {label}
-      {extra}
+      {!collapsed && <span className="truncate">{label}</span>}
+      {!collapsed && extra}
     </motion.button>
   )
 }
+
 
 export default function App() {
   const [messages, setMessages] = useState([])
@@ -625,6 +838,8 @@ export default function App() {
   const [lastUserMessage, setLastUserMessage] = useState('')
   const [stepsHistory, setStepsHistory] = useState([])
   const [showSteps, setShowSteps] = useState(false)
+  const [focusMode, setFocusMode] = useState('all')
+  const [proMode, setProMode] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, currentStep])
@@ -647,7 +862,8 @@ export default function App() {
         if (data.messages && data.messages.length > 0) {
           setMessages(data.messages.map((m, i) => ({
             role: m.role, content: m.content, id: Date.now() + i,
-            timestamp: m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+            timestamp: m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            steps: [] // Loaded messages default to empty steps (history databases usually store content only)
           })))
         }
       })
@@ -671,6 +887,24 @@ export default function App() {
 
   const handleSend = useCallback(async (text) => {
     if (!text.trim() || isProcessing) return
+
+    // Apply Focus mode modifiers
+    let queryText = text;
+    if (focusMode === 'code' && !text.startsWith('/')) {
+      queryText = `/code ${text}`;
+    } else if (focusMode === 'writing' && !text.startsWith('/')) {
+      queryText = `/summarize ${text}`;
+    } else if (focusMode === 'academic' && !text.startsWith('/')) {
+      queryText = `/analyze ${text}`;
+    } else if (focusMode === 'search' && !text.startsWith('/')) {
+      queryText = `Search the web for: ${text}`;
+    }
+
+    // Apply Pro mode modifier
+    if (proMode) {
+      queryText = `[PRO SEARCH MODE: Provide a comprehensive, detailed, step-by-step response. Cite all facts.]\n\n${queryText}`;
+    }
+
     const userMessage = { role: 'user', content: text, id: Date.now(), timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
     setMessages(prev => [...prev, userMessage])
     setInput('')
@@ -682,14 +916,14 @@ export default function App() {
       const response = await fetch(`${API}/api/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, user_id: userId, conversation_id: conversationId })
+        body: JSON.stringify({ message: queryText, user_id: userId, conversation_id: conversationId })
       })
       if (response.ok && response.headers.get('content-type')?.includes('text/event-stream')) {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let fullContent = ''
         const assistantId = Date.now() + 1
-        setMessages(prev => [...prev, { role: 'assistant', content: '', id: assistantId, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }])
+        setMessages(prev => [...prev, { role: 'assistant', content: '', id: assistantId, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), steps: [] }])
         setCurrentStep(null)
         while (true) {
           const { done, value } = await reader.read()
@@ -707,6 +941,7 @@ export default function App() {
                   setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: fullContent } : m))
                 } else if (parsed.type === 'step') {
                   setStepsHistory(prev => [...prev, parsed.step])
+                  setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, steps: [...(m.steps || []), parsed.step] } : m))
                   setCurrentStep(parsed.step)
                   await new Promise(r => setTimeout(r, 400))
                   setCurrentStep(null)
@@ -721,37 +956,39 @@ export default function App() {
         }
       } else {
         const data = await response.json()
-        if (data.steps) {
-          for (const step of data.steps) {
+        const steps = data.steps || []
+        if (steps.length > 0) {
+          for (const step of steps) {
             setStepsHistory(prev => [...prev, step])
             setCurrentStep(step)
             await new Promise(r => setTimeout(r, 600))
           }
         }
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now() + 1, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now() + 1, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), steps }])
         setCurrentStep(null)
       }
     } catch (error) {
       try {
-        const response = await fetch(`${API}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, user_id: userId, conversation_id: conversationId }) })
+        const response = await fetch(`${API}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: queryText, user_id: userId, conversation_id: conversationId }) })
         const data = await response.json()
-        if (data.steps) {
-          for (const step of data.steps) {
+        const steps = data.steps || []
+        if (steps.length > 0) {
+          for (const step of steps) {
             setStepsHistory(prev => [...prev, step])
             setCurrentStep(step)
             await new Promise(r => setTimeout(r, 600))
           }
         }
-        setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now() + 1, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }])
+        setMessages(prev => [...prev, { role: 'assistant', content: data.response, id: Date.now() + 1, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), steps }])
         setCurrentStep(null)
       } catch {
-        setMessages(prev => [...prev, { role: 'assistant', content: 'Error connecting to NEXUS. Make sure backend is running on port 8000.', id: Date.now() + 1, isError: true }])
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Error connecting to NEXUS. Make sure backend is running on port 8000.', id: Date.now() + 1, isError: true, steps: [] }])
       }
     } finally {
       setIsProcessing(false)
       refreshConversations()
     }
-  }, [isProcessing, userId, conversationId, refreshConversations])
+  }, [isProcessing, userId, conversationId, refreshConversations, focusMode, proMode])
 
   const handleExport = useCallback(async () => { const r = await fetch(`${API}/api/export/${conversationId}?user_id=${userId}`); const b = await r.blob(); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `chat_${conversationId}.md`; a.click() }, [conversationId, userId])
   const handleVoiceResult = useCallback((text) => handleSend(text), [handleSend])
@@ -781,96 +1018,110 @@ export default function App() {
       <AnimatedBackground />
 
       {/* ===== SIDEBAR ===== */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.aside
-            initial={{ x: -300, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -300, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="w-72 glass-strong border-r border-white/5 flex flex-col z-20"
-          >
-            {/* New Chat button */}
-            <div className="p-4 border-b border-white/5">
-              <motion.button
-                whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(14,165,233,0.3)' }}
-                whileTap={{ scale: 0.97 }}
-                onClick={handleNewChat}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary-600 via-blue-600 to-accent-600 text-white font-medium shadow-lg shadow-primary-500/25 btn-ripple relative overflow-hidden"
-              >
-                <motion.div animate={{ rotate: [0, 90, 0] }} transition={{ duration: 3, repeat: Infinity }}><Plus className="w-5 h-5" /></motion.div>
-                New Chat
-                {/* Shimmer overlay on button */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                  animate={{ x: ['-200%', '200%'] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                />
-              </motion.button>
-            </div>
-
-            {/* Search */}
-            <div className="p-3 border-b border-white/5">
-              <div className="relative input-glow rounded-lg">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dark-500" />
-                <input type="text" value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)} placeholder="Search chats..." className="w-full pl-9 pr-3 py-2 rounded-lg bg-dark-900/50 border border-white/10 text-xs text-white placeholder:text-dark-500 outline-none focus:border-primary-500/30 transition-colors" />
-              </div>
-            </div>
-
-            {/* Conversation list */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
-              <AnimatePresence>
-                {filteredConversations.map((conv, i) => (
-                  <motion.div
-                    key={conv.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ delay: i * 0.03 }}
-                    whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
-                    className={`group w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-2 cursor-pointer ${conv.id === conversationId ? 'bg-gradient-to-r from-primary-500/10 to-accent-500/5 text-white border-l-2 border-primary-500' : 'text-dark-300 hover:text-white'}`}
-                  >
-                    <div className="flex-1 min-w-0" onClick={() => setConversationId(conv.id)}>
-                      <div className="flex items-center gap-2">
-                        <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
-                        <span className="truncate text-sm">{conv.title}</span>
-                      </div>
-                      {conv.last_message && <p className="text-[10px] text-dark-500 truncate mt-0.5 pl-5">{conv.last_message}</p>}
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                      {conv.message_count > 0 && <span className="text-[10px] text-dark-500">{conv.message_count}</span>}
-                      <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={(e) => handleDeleteConversation(conv.id, e)} className="p-1 rounded hover:bg-red-500/20 text-dark-500 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></motion.button>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-              {filteredConversations.length === 0 && <p className="text-center text-xs text-dark-500 py-8">{sidebarSearch ? 'No matching chats' : 'No conversations yet'}</p>}
-            </div>
-
-            {/* Sidebar footer */}
-            <div className="p-4 border-t border-white/5 space-y-1">
-              <SidebarButton icon={BarChart3} label="Dashboard" onClick={() => setShowDashboard(!showDashboard)} />
-              <SidebarButton icon={Command} label="Commands" onClick={() => setShowCommands(!showCommands)} extra={<kbd className="ml-auto px-1.5 py-0.5 rounded bg-dark-800 border border-white/10 text-[10px] text-dark-500 font-mono">⌘K</kbd>} />
-              <SidebarButton icon={Upload} label="Upload File" onClick={() => setShowFileUpload(!showFileUpload)} />
-              <SidebarButton icon={BookOpen} label="Knowledge Base" onClick={() => setShowKnowledge(!showKnowledge)} />
-              <SidebarButton icon={Settings} label="Settings" onClick={() => setShowSettings(!showSettings)} />
-              <SidebarButton icon={Download} label="Export Chat" onClick={handleExport} />
-
-              {/* Brand footer */}
+      <motion.aside
+        animate={{ width: sidebarOpen ? 260 : 64 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="h-full glass-strong border-r border-white/5 flex flex-col z-20 overflow-hidden"
+      >
+        {/* New Chat button */}
+        <div className="p-4 border-b border-white/5 flex-shrink-0">
+          {sidebarOpen ? (
+            <motion.button
+              whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(14,165,233,0.3)' }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleNewChat}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary-600 via-blue-600 to-accent-600 text-white font-medium shadow-lg shadow-primary-500/25 btn-ripple relative overflow-hidden whitespace-nowrap"
+            >
+              <motion.div animate={{ rotate: [0, 90, 0] }} transition={{ duration: 3, repeat: Infinity }}><Plus className="w-5 h-5 flex-shrink-0" /></motion.div>
+              <span>New Chat</span>
+              {/* Shimmer overlay on button */}
               <motion.div
-                className="flex items-center gap-3 px-3 py-3 mt-2 border-t border-white/5"
-                whileHover={{ x: 2 }}
-              >
-                <AnimatedLogo size="sm" />
-                <div>
-                  <p className="text-sm font-medium text-gradient">NEXUS Agent</p>
-                  <p className="text-xs text-dark-400">Powered by Qwen</p>
-                </div>
-              </motion.div>
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                animate={{ x: ['-200%', '200%'] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              />
+            </motion.button>
+          ) : (
+            <motion.button
+              whileHover={{ scale: 1.1, boxShadow: '0 4px 15px rgba(14,165,233,0.3)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleNewChat}
+              className="w-10 h-10 mx-auto flex items-center justify-center rounded-xl bg-gradient-to-br from-primary-600 via-blue-600 to-accent-600 text-white shadow-md btn-ripple flex-shrink-0"
+              title="New Chat"
+            >
+              <Plus className="w-5 h-5" />
+            </motion.button>
+          )}
+        </div>
+
+        {/* Search */}
+        {sidebarOpen && (
+          <div className="p-3 border-b border-white/5 flex-shrink-0">
+            <div className="relative input-glow rounded-lg">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dark-500" />
+              <input type="text" value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)} placeholder="Search chats..." className="w-full pl-9 pr-3 py-2 rounded-lg bg-dark-900/50 border border-white/10 text-xs text-white placeholder:text-dark-500 outline-none focus:border-primary-500/30 transition-colors" />
             </div>
-          </motion.aside>
+          </div>
         )}
-      </AnimatePresence>
+
+        {/* Conversation list */}
+        {sidebarOpen ? (
+          <div className="flex-1 overflow-y-auto p-3 space-y-1 scrollbar-thin">
+            <AnimatePresence>
+              {filteredConversations.map((conv, i) => (
+                <motion.div
+                  key={conv.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ delay: i * 0.03 }}
+                  whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.06)' }}
+                  className={`group w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-2 cursor-pointer ${conv.id === conversationId ? 'bg-gradient-to-r from-primary-500/10 to-accent-500/5 text-white border-l-2 border-primary-500' : 'text-dark-300 hover:text-white'}`}
+                >
+                  <div className="flex-1 min-w-0" onClick={() => setConversationId(conv.id)}>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate text-sm">{conv.title}</span>
+                    </div>
+                    {conv.last_message && <p className="text-[10px] text-dark-500 truncate mt-0.5 pl-5">{conv.last_message}</p>}
+                  </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    {conv.message_count > 0 && <span className="text-[10px] text-dark-500">{conv.message_count}</span>}
+                    <motion.button whileHover={{ scale: 1.2 }} whileTap={{ scale: 0.8 }} onClick={(e) => handleDeleteConversation(conv.id, e)} className="p-1 rounded hover:bg-red-500/20 text-dark-500 hover:text-red-400 transition-colors"><Trash2 className="w-3 h-3" /></motion.button>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {filteredConversations.length === 0 && <p className="text-center text-xs text-dark-500 py-8">{sidebarSearch ? 'No matching chats' : 'No conversations yet'}</p>}
+          </div>
+        ) : (
+          <div className="flex-1" />
+        )}
+
+        {/* Sidebar footer */}
+        <div className={`p-4 border-t border-white/5 space-y-1 flex-shrink-0 ${!sidebarOpen ? 'px-2' : ''}`}>
+          <SidebarButton icon={BarChart3} label="Dashboard" onClick={() => setShowDashboard(!showDashboard)} collapsed={!sidebarOpen} />
+          <SidebarButton icon={Command} label="Commands" onClick={() => setShowCommands(!showCommands)} extra={<kbd className="ml-auto px-1.5 py-0.5 rounded bg-dark-800 border border-white/10 text-[10px] text-dark-500 font-mono">⌘K</kbd>} collapsed={!sidebarOpen} />
+          <SidebarButton icon={Upload} label="Upload File" onClick={() => setShowFileUpload(!showFileUpload)} collapsed={!sidebarOpen} />
+          <SidebarButton icon={BookOpen} label="Knowledge Base" onClick={() => setShowKnowledge(!showKnowledge)} collapsed={!sidebarOpen} />
+          <SidebarButton icon={Settings} label="Settings" onClick={() => setShowSettings(!showSettings)} collapsed={!sidebarOpen} />
+          <SidebarButton icon={Download} label="Export Chat" onClick={handleExport} collapsed={!sidebarOpen} />
+
+          {/* Brand footer */}
+          <motion.div
+            className={`flex items-center gap-3 mt-2 border-t border-white/5 ${!sidebarOpen ? 'justify-center py-2' : 'px-3 py-3'}`}
+            whileHover={{ x: sidebarOpen ? 2 : 0 }}
+          >
+            <AnimatedLogo size="sm" />
+            {sidebarOpen && (
+              <div>
+                <p className="text-sm font-medium text-gradient">NEXUS Agent</p>
+                <p className="text-xs text-dark-400">Powered by Qwen</p>
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </motion.aside>
 
       {/* ===== MAIN CONTENT ===== */}
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
@@ -915,81 +1166,185 @@ export default function App() {
           <div className="max-w-4xl mx-auto">
             <AnimatePresence mode='popLayout'>
               {messages.length === 0 ? (
-                <WelcomeHero onSend={handleSend} />
+                <LandingView
+                  input={input}
+                  setInput={setInput}
+                  isProcessing={isProcessing}
+                  onSend={handleSend}
+                  focusMode={focusMode}
+                  setFocusMode={setFocusMode}
+                  proMode={proMode}
+                  setProMode={setProMode}
+                  onAttachClick={() => setShowFileUpload(prev => !prev)}
+                  onVoiceClick={() => setShowVoice(prev => !prev)}
+                />
               ) : (
-                messages.map((message, idx) => (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 20, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 240, damping: 22 }}
-                    className={`flex gap-4 mb-6 timestamp-hover ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    {message.role === 'assistant' && (
+                messages.map((message, idx) => {
+                  if (message.role === 'user') {
+                    return (
                       <motion.div
-                        className="w-9 h-9 rounded-xl flex-shrink-0 bg-gradient-to-br from-primary-500 via-blue-500 to-accent-500 flex items-center justify-center mt-1 text-white shadow-[0_0_12px_rgba(14,165,233,0.3)] relative overflow-hidden"
-                        initial={{ scale: 0, rotate: -90 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        key={message.id}
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="border-t border-white/5 pt-8 mt-8 first:border-t-0 first:pt-0 first:mt-0"
                       >
-                        <Bot className="w-5 h-5 text-white relative z-10" />
-                        <motion.div
-                          className="absolute inset-0 bg-white/20"
-                          animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0, 0.3] }}
-                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-                        />
+                        <h2 className="text-2xl text-zinc-100 font-semibold tracking-tight leading-snug">
+                          {message.content}
+                        </h2>
                       </motion.div>
-                    )}
+                    );
+                  }
+
+                  // Assistant message
+                  return (
                     <motion.div
-                      className={`max-w-[80%] rounded-2xl ${
-                        message.role === 'user'
-                          ? 'rounded-tr-none text-white px-5 py-3.5 text-sm user-chat-bubble'
-                          : message.isError
-                          ? 'bg-red-500/10 border border-red-500/20 text-red-300 px-5 py-4'
-                          : 'assistant-chat-bubble assistant-accent-bar'
-                      }`}
-                      whileHover={{ y: -2 }}
+                      key={message.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-6 mb-8"
                     >
-                      {message.role === 'assistant' && !message.isError ? (
-                        <div className="prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ code({ node, inline, className, children, ...props }) { const match = /language-(\w+)/.exec(className || ''); return !inline ? <CodeBlock language={match?.[1] || 'text'} code={String(children).replace(/\n$/, '')} /> : <code className="bg-dark-900/60 border border-white/5 px-1.5 py-0.5 rounded text-sm text-primary-300" {...props}>{children}</code> } }}>{message.content}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-                      )}
-                      {message.role === 'assistant' && !message.isError && (
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/5">
-                          <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }} onClick={() => { navigator.clipboard.writeText(message.content); setCopiedId(message.id); setTimeout(() => setCopiedId(null), 2000) }} className="p-1.5 rounded-lg hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Copy">{copiedId === message.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}</motion.button>
-                          <motion.button whileHover={{ scale: 1.15, rotate: 180 }} whileTap={{ scale: 0.85 }} onClick={handleRegenerate} className="p-1.5 rounded-lg hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Regenerate"><RefreshCw className="w-3.5 h-3.5" /></motion.button>
-                        </motion.div>
-                      )}
-                      {message.timestamp && <span className="msg-time text-[10px] text-dark-500 mt-1 block">{message.timestamp}</span>}
+                      {(() => {
+                        const sources = extractSourcesFromSteps(message.steps);
+                        const formattedContent = formatCitations(message.content, sources);
+                        return (
+                          <>
+                            {sources && sources.length > 0 && (
+                              <div className="mb-6">
+                                <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-semibold mb-2.5 uppercase tracking-wider">
+                                  <Globe className="w-3.5 h-3.5 text-emerald-500" />
+                                  <span>Sources</span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                  {sources.slice(0, 4).map((source) => (
+                                    <a
+                                      key={source.index}
+                                      href={source.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="source-card rounded-xl p-2.5 flex flex-col gap-1 select-none border border-white/5 text-zinc-300 hover:text-white"
+                                    >
+                                      <span className="text-[10px] text-zinc-300 font-semibold truncate leading-normal">{source.title}</span>
+                                      <div className="flex items-center gap-1.5 mt-1">
+                                        <img
+                                          src={`https://www.google.com/s2/favicons?sz=64&domain=${source.domain}`}
+                                          alt=""
+                                          className="w-3 h-3 rounded flex-shrink-0 bg-zinc-800"
+                                          onError={(e) => { e.target.style.opacity = 0; }}
+                                        />
+                                        <span className="text-[9px] text-zinc-500 truncate flex-grow">{source.domain}</span>
+                                        <span className="text-[8px] bg-white/5 border border-white/5 text-zinc-400 rounded-full w-4 h-4 flex items-center justify-center flex-shrink-0 font-bold">{source.index}</span>
+                                      </div>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {message.isError ? (
+                              <div className="bg-red-500/10 border border-red-500/20 text-red-300 px-5 py-4 rounded-xl text-sm leading-relaxed">
+                                {message.content}
+                              </div>
+                            ) : (
+                              <div className="prose prose-invert prose-sm max-w-none text-zinc-200 leading-relaxed text-sm">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    a({ href, children }) {
+                                      const text = String(children);
+                                      if (/^\d+$/.test(text)) {
+                                        return (
+                                          <a
+                                            href={href}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="citation-badge"
+                                          >
+                                            {text}
+                                          </a>
+                                        );
+                                      }
+                                      return (
+                                        <a href={href} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">
+                                          {children}
+                                        </a>
+                                      );
+                                    },
+                                    code({ node, inline, className, children, ...props }) {
+                                      const match = /language-(\w+)/.exec(className || '');
+                                      return !inline ? (
+                                        <CodeBlock language={match?.[1] || 'text'} code={String(children).replace(/\n$/, '')} />
+                                      ) : (
+                                        <code className="bg-dark-900/60 border border-white/5 px-1.5 py-0.5 rounded text-sm text-primary-300" {...props}>{children}</code>
+                                      );
+                                    }
+                                  }}
+                                >
+                                  {formattedContent}
+                                </ReactMarkdown>
+                              </div>
+                            )}
+
+                            {!message.isError && (
+                              <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-white/5">
+                                <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.85 }} onClick={() => { navigator.clipboard.writeText(message.content); setCopiedId(message.id); setTimeout(() => setCopiedId(null), 2000) }} className="p-1.5 rounded-lg hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Copy">{copiedId === message.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}</motion.button>
+                                <motion.button whileHover={{ scale: 1.15, rotate: 180 }} whileTap={{ scale: 0.85 }} onClick={handleRegenerate} className="p-1.5 rounded-lg hover:bg-white/10 text-dark-500 hover:text-white transition-colors" title="Regenerate"><RefreshCw className="w-3.5 h-3.5" /></motion.button>
+                                {message.timestamp && <span className="text-[10px] text-zinc-500 ml-auto select-none">{message.timestamp}</span>}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </motion.div>
-                    {message.role === 'user' && (
-                      <motion.div
-                        className="w-9 h-9 rounded-xl flex-shrink-0 bg-dark-900 border border-white/10 flex items-center justify-center mt-1 text-primary-400 shadow-[0_0_10px_rgba(14,165,233,0.1)]"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                      >
-                        <User className="w-5 h-5 text-primary-300" />
-                      </motion.div>
-                    )}
-                  </motion.div>
-                ))
+                  );
+                })
               )}
             </AnimatePresence>
             {messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && !isProcessing && <SuggestedActions onSend={handleSend} />}
             <AnimatePresence>
               {currentStep && (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex gap-4 mb-6">
-                  <div className="w-8 h-8 rounded-lg flex-shrink-0 bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center mt-1 glow-primary">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="bg-white/5 border border-white/5 rounded-2xl px-5 py-3 max-w-[85%]">
-                    {currentStep.type === 'thinking' && (<div className="flex items-center gap-2 text-dark-300 text-sm"><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Loader2 className="w-4 h-4 text-primary-400" /></motion.div>{currentStep.content}</div>)}
-                    {currentStep.type === 'tool' && currentStep.tool === 'web_search' && (<div className="space-y-2"><div className="flex items-center gap-2"><motion.div className="w-6 h-6 rounded-md bg-gradient-to-r from-blue-500 to-cyan-500 flex items-center justify-center" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 1, repeat: Infinity }}><Globe className="w-3 h-3 text-white" /></motion.div><span className="text-sm font-medium text-white">Searching the internet...</span></div>{currentStep.result && (<div className="bg-dark-900/50 rounded-lg px-3 py-2 text-xs text-dark-300 max-h-24 overflow-y-auto scrollbar-thin">{currentStep.result}</div>)}</div>)}
-                    {currentStep.type === 'tool' && currentStep.tool !== 'web_search' && (<div className="space-y-2"><div className="flex items-center gap-2">{(() => { const Icon = toolIcons[currentStep.tool] || Zap; const gradient = toolColors[currentStep.tool] || 'from-primary-500 to-accent-500'; return (<><motion.div className={`w-6 h-6 rounded-md bg-gradient-to-r ${gradient} flex items-center justify-center`} animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 1, repeat: Infinity }}><Icon className="w-3 h-3 text-white" /></motion.div><span className="text-sm font-medium text-white">{currentStep.tool.replace('_', ' ')}</span></>)})()}</div>{currentStep.result && (<div className="bg-dark-900/50 rounded-lg px-3 py-2 text-xs text-dark-300 font-mono max-h-24 overflow-y-auto scrollbar-thin">{currentStep.result}</div>)}</div>)}
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mb-6 pt-4 border-t border-white/5">
+                  <div className="flex flex-col gap-2 max-w-xl">
+                    {currentStep.type === 'thinking' && (
+                      <div className="flex items-center gap-2 text-zinc-400 text-sm">
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}>
+                          <Loader2 className="w-4 h-4 text-emerald-500" />
+                        </motion.div>
+                        <span>{currentStep.content}</span>
+                      </div>
+                    )}
+                    {currentStep.type === 'tool' && currentStep.tool === 'web_search' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-emerald-500" />
+                          <span className="text-sm font-medium text-zinc-300">Searching the web...</span>
+                        </div>
+                        {currentStep.result && (
+                          <div className="bg-white/5 border border-white/5 rounded-xl px-3.5 py-2.5 text-xs text-zinc-400 max-h-24 overflow-y-auto scrollbar-thin">
+                            {currentStep.result}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {currentStep.type === 'tool' && currentStep.tool !== 'web_search' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const Icon = toolIcons[currentStep.tool] || Zap;
+                            return (
+                              <>
+                                <Icon className="w-4 h-4 text-emerald-500" />
+                                <span className="text-sm font-medium text-zinc-300">{currentStep.tool.replace(/_/g, ' ')}...</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        {currentStep.result && (
+                          <div className="bg-white/5 border border-white/5 rounded-xl px-3.5 py-2.5 text-xs text-zinc-400 font-mono max-h-24 overflow-y-auto scrollbar-thin">
+                            {currentStep.result}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -1000,53 +1355,26 @@ export default function App() {
         </div>
 
         {/* Input area */}
-        <div className="px-4 pb-4 md:px-8">
-          <div className="max-w-4xl mx-auto">
-            {showVoice && <VoiceChat onResult={handleVoiceResult} onClose={() => setShowVoice(false)} />}
-            <motion.form initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ type: 'spring', stiffness: 200 }} onSubmit={handleSubmit}>
-              <motion.div
-                className="glass-strong rounded-2xl p-2 flex items-center gap-2 border border-white/10 focus-within:border-primary-500/50 transition-all input-glow gradient-border-animated"
-                whileHover={{ boxShadow: '0 4px 20px rgba(14,165,233,0.08)' }}
-              >
-                <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(input) } }} placeholder="Ask NEXUS anything... (⌘K for commands)" disabled={isProcessing} rows={1} className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-sm placeholder:text-dark-500 disabled:opacity-50 auto-resize" />
-                <motion.button
-                  type="submit"
-                  disabled={isProcessing || !input.trim()}
-                  whileHover={{ scale: 1.08, boxShadow: '0 0 20px rgba(14,165,233,0.4)' }}
-                  whileTap={{ scale: 0.9 }}
-                  className="p-3 rounded-xl bg-gradient-to-r from-primary-500 via-blue-500 to-accent-500 disabled:opacity-30 disabled:cursor-not-allowed shadow-lg shadow-primary-500/25 btn-ripple relative overflow-hidden"
-                >
-                  {isProcessing ? (
-                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Loader2 className="w-4 h-4" /></motion.div>
-                  ) : (
-                    <motion.div whileHover={{ x: 2, y: -2 }}><Send className="w-4 h-4" /></motion.div>
-                  )}
-                  {/* Send button shimmer */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    animate={{ x: ['-200%', '200%'] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'linear', repeatDelay: 3 }}
-                  />
-                </motion.button>
-              </motion.div>
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 mt-2.5 px-2 text-[10px] md:text-xs text-dark-500 select-none">
-                <motion.p
-                  animate={{ opacity: [0.5, 0.8, 0.5] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                >
-                  NEXUS can make mistakes. Verify important information.
-                </motion.p>
-                <div className="hidden sm:flex items-center gap-3">
-                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-dark-900 border border-white/5 text-[10px] text-dark-400 font-mono">Enter</kbd> to send</span>
-                  <span className="w-1 h-1 rounded-full bg-dark-700" />
-                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-dark-900 border border-white/5 text-[10px] text-dark-400 font-mono">Shift + Enter</kbd> line break</span>
-                  <span className="w-1 h-1 rounded-full bg-dark-700" />
-                  <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-dark-900 border border-white/5 text-[10px] text-dark-400 font-mono">⌘K</kbd> menu</span>
-                </div>
-              </div>
-            </motion.form>
+        {messages.length > 0 && (
+          <div className="px-4 pb-4 md:px-8">
+            <div className="max-w-4xl mx-auto">
+              {showVoice && <VoiceChat onResult={handleVoiceResult} onClose={() => setShowVoice(false)} />}
+              <SearchInputBox
+                input={input}
+                setInput={setInput}
+                isProcessing={isProcessing}
+                onSubmit={() => handleSend(input)}
+                focusMode={focusMode}
+                setFocusMode={setFocusMode}
+                proMode={proMode}
+                setProMode={setProMode}
+                onAttachClick={() => setShowFileUpload(prev => !prev)}
+                onVoiceClick={() => setShowVoice(prev => !prev)}
+                placeholder="Ask a follow-up..."
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   )
