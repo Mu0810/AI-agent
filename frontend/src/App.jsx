@@ -156,16 +156,27 @@ function FocusDropdown({ focusMode, setFocusMode }) {
 
 function AnimatedBackground() {
   const canvasRef = useRef(null)
+  const isMobileRef = useRef(window.innerWidth < 768)
+
   useEffect(() => {
     const canvas = canvasRef.current
+    if (!canvas) return
     const ctx = canvas.getContext('2d')
     let particles = []
     let animId
     let mouse = { x: undefined, y: undefined }
-    const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight }
+    const resize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      isMobileRef.current = window.innerWidth < 768
+    }
     resize()
     window.addEventListener('resize', resize)
-    window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y })
+
+    // Skip mouse tracking on mobile (touch devices don't benefit)
+    if (!isMobileRef.current) {
+      window.addEventListener('mousemove', (e) => { mouse.x = e.x; mouse.y = e.y })
+    }
 
     class Particle {
       constructor() { this.reset() }
@@ -184,8 +195,8 @@ function AnimatedBackground() {
         this.x += this.speedX
         this.y += this.speedY
 
-        // Mouse interaction: gentle repulsion
-        if (mouse.x !== undefined) {
+        // Mouse interaction: gentle repulsion (desktop only)
+        if (!isMobileRef.current && mouse.x !== undefined) {
           const dx = this.x - mouse.x
           const dy = this.y - mouse.y
           const dist = Math.sqrt(dx * dx + dy * dy)
@@ -209,16 +220,19 @@ function AnimatedBackground() {
       }
     }
 
-    for (let i = 0; i < 80; i++) particles.push(new Particle())
+    // Fewer particles on mobile for better performance
+    const particleCount = isMobileRef.current ? 30 : 80
+    for (let i = 0; i < particleCount; i++) particles.push(new Particle())
 
     const connect = () => {
+      const maxDist = isMobileRef.current ? 100 : 140
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
           const dx = particles[i].x - particles[j].x
           const dy = particles[i].y - particles[j].y
           const d = Math.sqrt(dx * dx + dy * dy)
-          if (d < 140) {
-            const alpha = 0.08 * (1 - d / 140)
+          if (d < maxDist) {
+            const alpha = 0.08 * (1 - d / maxDist)
             const gradient = ctx.createLinearGradient(particles[i].x, particles[i].y, particles[j].x, particles[j].y)
             gradient.addColorStop(0, `hsla(${particles[i].hue}, 80%, 65%, ${alpha})`)
             gradient.addColorStop(1, `hsla(${particles[j].hue}, 80%, 65%, ${alpha})`)
@@ -659,7 +673,7 @@ function SearchInputBox({
   }, [input]);
 
   return (
-    <div className="bg-[#191c1d] border border-white/10 rounded-2xl p-3 flex flex-col focus-within:border-zinc-700 transition-all shadow-xl w-full">
+    <div className="bg-[#191c1d] border border-white/10 rounded-2xl p-2.5 sm:p-3 flex flex-col focus-within:border-zinc-700 transition-all shadow-xl w-full">
       <textarea
         ref={textareaRef}
         value={input}
@@ -673,11 +687,11 @@ function SearchInputBox({
         placeholder={placeholder}
         disabled={isProcessing}
         rows={1}
-        className="w-full bg-transparent border-none outline-none resize-none px-2 py-1 text-sm placeholder:text-zinc-500 text-white disabled:opacity-50 min-h-[40px] max-h-[200px]"
+        className="w-full bg-transparent border-none outline-none resize-none px-2 py-1 text-sm sm:text-sm text-[15px] placeholder:text-zinc-500 text-white disabled:opacity-50 min-h-[40px] max-h-[200px]"
       />
       
-      <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-2">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-2 gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
           <FocusDropdown focusMode={focusMode} setFocusMode={setFocusMode} />
           
           <button
@@ -699,7 +713,7 @@ function SearchInputBox({
           </button>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-zinc-400">Pro</span>
             <button
@@ -759,12 +773,12 @@ function LandingView({
   ];
 
   return (
-    <div className="h-full flex flex-col items-center justify-center min-h-[60vh] max-w-2xl mx-auto text-center px-4 w-full page-enter">
-      <h2 className="text-4xl md:text-5xl font-normal tracking-tight text-white mb-8">
+    <div className="h-full flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[60vh] max-w-2xl mx-auto text-center px-3 sm:px-4 w-full page-enter">
+      <h2 className="text-2xl sm:text-4xl md:text-5xl font-normal tracking-tight text-white mb-6 sm:mb-8 leading-tight">
         Where knowledge begins
       </h2>
 
-      <div className="w-full mb-6 text-left">
+      <div className="w-full mb-4 sm:mb-6 text-left">
         <SearchInputBox
           input={input}
           setInput={setInput}
@@ -780,7 +794,7 @@ function LandingView({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 mt-2">
         {suggestions.map((item, i) => (
           <button
             key={i}
@@ -824,7 +838,7 @@ export default function App() {
   const [userId] = useState(() => `user_${Date.now()}`)
   const [conversationId, setConversationId] = useState(() => `conv_${Date.now()}`)
   const [conversations, setConversations] = useState([])
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768)
   const [copiedId, setCopiedId] = useState(null)
   const [showVoice, setShowVoice] = useState(false)
   const [showDashboard, setShowDashboard] = useState(false)
@@ -840,7 +854,18 @@ export default function App() {
   const [showSteps, setShowSteps] = useState(false)
   const [focusMode, setFocusMode] = useState('all')
   const [proMode, setProMode] = useState(false)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const messagesEndRef = useRef(null)
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, currentStep])
   useEffect(() => { fetch(`${API}/api/conversations?user_id=${userId}`).then(r => r.json()).then(setConversations).catch(() => {}) }, [userId])
@@ -1014,14 +1039,31 @@ export default function App() {
   const filteredConversations = conversations.filter(c => !sidebarSearch || c.title?.toLowerCase().includes(sidebarSearch.toLowerCase()) || c.last_message?.toLowerCase().includes(sidebarSearch.toLowerCase()))
 
   return (
-    <div className="h-screen bg-dark-950 relative overflow-hidden flex aurora-bg">
+    <div className="h-screen h-[100dvh] bg-dark-950 relative overflow-hidden flex aurora-bg">
       <AnimatedBackground />
+
+      {/* ===== MOBILE BACKDROP OVERLAY ===== */}
+      <AnimatePresence>
+        {isMobile && sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20"
+          />
+        )}
+      </AnimatePresence>
 
       {/* ===== SIDEBAR ===== */}
       <motion.aside
-        animate={{ width: sidebarOpen ? 260 : 64 }}
+        animate={{ width: sidebarOpen ? 260 : (isMobile ? 0 : 64) }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className="h-full glass-strong border-r border-white/5 flex flex-col z-20 overflow-hidden"
+        className={`flex flex-col overflow-hidden ${
+          isMobile
+            ? 'fixed left-0 top-0 bottom-0 h-[100dvh] shadow-2xl z-30 bg-dark-900/95 backdrop-blur-2xl'
+            : 'relative h-full glass-strong z-20'
+        } ${sidebarOpen || !isMobile ? 'border-r border-white/5' : 'border-r-0'}`}
       >
         {/* New Chat button */}
         <div className="p-4 border-b border-white/5 flex-shrink-0">
@@ -1130,19 +1172,19 @@ export default function App() {
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 200 }}
-          className="glass-strong px-4 py-3 flex items-center justify-between border-b border-white/5 scan-line"
+          className="glass-strong px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between border-b border-white/5 scan-line flex-shrink-0"
         >
-          <div className="flex items-center gap-3">
-            <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-white/10 transition-colors"><Layers className="w-5 h-5 text-dark-300" /></motion.button>
-            <div className="flex items-center gap-2">
-              <AnimatedLogo size="sm" />
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <motion.button whileHover={{ scale: 1.1, rotate: 90 }} whileTap={{ scale: 0.9 }} onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"><Layers className="w-5 h-5 text-dark-300" /></motion.button>
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="hidden sm:block"><AnimatedLogo size="sm" /></div>
               <div>
-                <h1 className="text-lg font-bold text-gradient neon-text">NEXUS</h1>
+                <h1 className="text-base sm:text-lg font-bold text-gradient neon-text leading-tight">NEXUS</h1>
                 <StatusBadge online={backendOnline} />
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setShowVoice(!showVoice)} className={`p-2 rounded-lg transition-colors ${showVoice ? 'bg-red-500/20 text-red-400' : 'hover:bg-white/10 text-dark-300'}`}>{showVoice ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}</motion.button>
             <motion.button whileHover={{ scale: 1.1, rotate: 30 }} whileTap={{ scale: 0.9 }} onClick={() => setShowSettings(!showSettings)} className="p-2 rounded-lg hover:bg-white/10 text-dark-300 transition-colors"><Settings className="w-5 h-5" /></motion.button>
             <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={handleExport} className="flex items-center gap-2 px-3 py-2 rounded-lg glass hover:bg-white/10 text-sm btn-ripple"><Download className="w-4 h-4" /><span className="hidden sm:inline">Export</span></motion.button>
@@ -1162,7 +1204,7 @@ export default function App() {
         <StepsPanel steps={stepsHistory} show={showSteps} onToggle={() => setShowSteps(prev => !prev)} />
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-6 md:px-8">
+        <div className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4 sm:px-4 sm:py-6 md:px-8">
           <div className="max-w-4xl mx-auto">
             <AnimatePresence mode='popLayout'>
               {messages.length === 0 ? (
@@ -1188,7 +1230,7 @@ export default function App() {
                         animate={{ opacity: 1, y: 0 }}
                         className="border-t border-white/5 pt-8 mt-8 first:border-t-0 first:pt-0 first:mt-0"
                       >
-                        <h2 className="text-2xl text-zinc-100 font-semibold tracking-tight leading-snug">
+                        <h2 className="text-lg sm:text-2xl text-zinc-100 font-semibold tracking-tight leading-snug">
                           {message.content}
                         </h2>
                       </motion.div>
@@ -1214,7 +1256,7 @@ export default function App() {
                                   <Globe className="w-3.5 h-3.5 text-emerald-500" />
                                   <span>Sources</span>
                                 </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                                   {sources.slice(0, 4).map((source) => (
                                     <a
                                       key={source.index}
@@ -1356,9 +1398,9 @@ export default function App() {
 
         {/* Input area */}
         {messages.length > 0 && (
-          <div className="px-4 pb-4 md:px-8">
+          <div className="px-3 pb-3 sm:px-4 sm:pb-4 md:px-8 mobile-safe-bottom flex-shrink-0">
             <div className="max-w-4xl mx-auto">
-              {showVoice && <VoiceChat onResult={handleVoiceResult} onClose={() => setShowVoice(false)} />}
+              {showVoice && <div className="mb-2"><VoiceChat onResult={handleVoiceResult} onClose={() => setShowVoice(false)} /></div>}
               <SearchInputBox
                 input={input}
                 setInput={setInput}

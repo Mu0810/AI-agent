@@ -104,7 +104,7 @@ export default function FileUpload({ userId, onClose }) {
       ) : result.type === 'image' ? (
         <div className="space-y-4">
           <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-lg">
-            <img src={result.url} alt="Uploaded" className="max-h-64 w-full object-cover" />
+            <img src={result.url} alt="Uploaded" className="max-h-64 w-full object-contain bg-black/20" />
           </div>
           <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all duration-300 hover:border-white/10">
             <div className="flex items-center gap-2 mb-2">

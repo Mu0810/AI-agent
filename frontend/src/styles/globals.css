@@ -143,13 +143,42 @@
 /* ===== BASE STYLES ===== */
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-dark-950 text-white;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
+    height: 100%;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    /* Safe area padding for notched devices */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
+
+  #root {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
   }
@@ -283,6 +312,13 @@
     width: 300px; height: 300px;
     background: radial-gradient(circle, rgba(56, 189, 248, 0.3), transparent 70%);
     animation: orb-drift-3 18s ease-in-out infinite;
+  }
+
+  /* Mobile-specific orb sizes (smaller to avoid performance issues) */
+  @media (max-width: 767px) {
+    .orb-1 { width: 200px; height: 200px; filter: blur(60px); opacity: 0.2; }
+    .orb-2 { width: 180px; height: 180px; filter: blur(60px); opacity: 0.15; }
+    .orb-3 { width: 150px; height: 150px; filter: blur(50px); opacity: 0.15; }
   }
 
   /* Neon text */
@@ -556,4 +592,60 @@ textarea.auto-resize {
   background-color: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.1);
   transform: translateY(-1px);
+}
+
+/* ===== RESPONSIVE MOBILE OPTIMIZATIONS ===== */
+
+/* Reduce animations on mobile for performance */
+@media (max-width: 767px) {
+  .scan-line::after { display: none; }
+  .glass::before { animation: none; }
+  .neon-text { animation: none; }
+  .aurora-bg { animation: none; }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Mobile scrolling improvements */
+@media (max-width: 767px) {
+  .scrollbar-thin {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  /* Ensure prose doesn't overflow on mobile */
+  .prose {
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .prose pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  .prose table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .prose img {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* Safe area bottom padding for input on mobile */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .mobile-safe-bottom {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  }
 }
